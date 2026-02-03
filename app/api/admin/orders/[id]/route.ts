@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { getGoogleSheetsService } from '@/lib/google-sheets'
 import { z } from 'zod'
 
 const updateOrderSchema = z.object({
@@ -59,6 +60,22 @@ export async function PATCH(
     const body = await request.json()
     const validated = updateOrderSchema.parse(body)
 
+    // Get current order state before update
+    const currentOrder = await prisma.order.findUnique({
+      where: { id: params.id },
+      include: {
+        ticketType: true,
+        paymentTransaction: true,
+      },
+    })
+
+    if (!currentOrder) {
+      return NextResponse.json(
+        { error: 'Order not found' },
+        { status: 404 }
+      )
+    }
+
     const order = await prisma.order.update({
       where: { id: params.id },
       data: validated,
@@ -67,6 +84,37 @@ export async function PATCH(
         paymentTransaction: true,
       },
     })
+
+    // Log status change to Google Sheets
+    try {
+      const changes: string[] = []
+      if (validated.status && validated.status !== currentOrder.status) {
+        changes.push(`Order status: ${currentOrder.status} → ${validated.status}`)
+      }
+      if (validated.paymentStatus && validated.paymentStatus !== currentOrder.paymentStatus) {
+        changes.push(`Payment status: ${currentOrder.paymentStatus} → ${validated.paymentStatus}`)
+      }
+
+      if (changes.length > 0) {
+        await getGoogleSheetsService().logOrder({
+          timestamp: new Date().toISOString(),
+          orderNumber: order.orderNumber,
+          customerName: order.customerName,
+          customerEmail: order.customerEmail,
+          customerPhone: order.customerPhone,
+          ticketType: order.ticketType.name,
+          quantity: order.quantity,
+          totalAmount: order.totalAmount,
+          orderStatus: order.status,
+          paymentStatus: order.paymentStatus,
+          action: 'STATUS_UPDATED',
+          notes: `Admin update: ${changes.join(', ')}`,
+        })
+      }
+    } catch (logError) {
+      console.error('Error logging status update to Google Sheets:', logError)
+      // Don't fail the update if logging fails
+    }
 
     return NextResponse.json(order)
   } catch (error) {

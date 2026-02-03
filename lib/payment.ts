@@ -69,10 +69,12 @@ class PayMayaProvider implements PaymentProviderInterface {
   async retrievePaymentIntent(paymentIntentId: string): Promise<PaymentIntent> {
     // For PayMaya, we can't easily retrieve payment status via API without their SDK
     // This would need to be implemented with PayMaya's API if available
+    const paymentUrl = `${this.baseUrl}?id=${paymentIntentId}`
     return {
       id: paymentIntentId,
       amount: 0,
       currency: 'PHP',
+      paymentUrl,
       status: 'pending',
     }
   }

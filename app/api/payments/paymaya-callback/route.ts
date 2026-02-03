@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getEmailService } from '@/lib/email'
+import { getGoogleSheetsService } from '@/lib/google-sheets'
 
 export async function GET(request: Request) {
   try {
@@ -94,6 +95,27 @@ export async function GET(request: Request) {
         // Don't fail the callback if email fails
       }
 
+      // Log payment completion to Google Sheets
+      try {
+        await getGoogleSheetsService().logOrder({
+          timestamp: new Date().toISOString(),
+          orderNumber: order.orderNumber,
+          customerName: order.customerName,
+          customerEmail: order.customerEmail,
+          customerPhone: order.customerPhone,
+          ticketType: order.ticketType.name,
+          quantity: order.quantity,
+          totalAmount: order.totalAmount,
+          orderStatus: 'CONFIRMED',
+          paymentStatus: 'COMPLETED',
+          action: 'PAYMENT_COMPLETED',
+          notes: `Payment completed via PayMaya. Invoice ID: ${invoiceId || 'N/A'}`,
+        })
+      } catch (logError) {
+        console.error('Error logging payment to Google Sheets:', logError)
+        // Don't fail the callback if logging fails
+      }
+
       return NextResponse.redirect(new URL(`/checkout/success?orderId=${orderId}`, request.url))
     }
 
@@ -176,6 +198,26 @@ export async function POST(request: Request) {
       })
     } catch (emailError) {
       console.error('Error sending confirmation email:', emailError)
+    }
+
+    // Log payment completion to Google Sheets (webhook)
+    try {
+      await getGoogleSheetsService().logOrder({
+        timestamp: new Date().toISOString(),
+        orderNumber: transaction.order.orderNumber,
+        customerName: transaction.order.customerName,
+        customerEmail: transaction.order.customerEmail,
+        customerPhone: transaction.order.customerPhone,
+        ticketType: transaction.order.ticketType.name,
+        quantity: transaction.order.quantity,
+        totalAmount: transaction.order.totalAmount,
+        orderStatus: 'CONFIRMED',
+        paymentStatus: 'COMPLETED',
+        action: 'PAYMENT_COMPLETED',
+        notes: `Payment completed via PayMaya webhook. Invoice ID: ${invoiceId}`,
+      })
+    } catch (logError) {
+      console.error('Error logging payment to Google Sheets:', logError)
     }
 
     return NextResponse.json({ received: true })

@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { generateOrderNumber } from '@/lib/utils'
+import { getGoogleSheetsService } from '@/lib/google-sheets'
 import { z } from 'zod'
 
 const createOrderSchema = z.object({
@@ -60,6 +61,27 @@ export async function POST(request: Request) {
         ticketType: true,
       },
     })
+
+    // Log order creation to Google Sheets
+    try {
+      await getGoogleSheetsService().logOrder({
+        timestamp: new Date().toISOString(),
+        orderNumber: order.orderNumber,
+        customerName: order.customerName,
+        customerEmail: order.customerEmail,
+        customerPhone: order.customerPhone,
+        ticketType: order.ticketType.name,
+        quantity: order.quantity,
+        totalAmount: order.totalAmount,
+        orderStatus: order.status,
+        paymentStatus: order.paymentStatus,
+        action: 'ORDER_CREATED',
+        notes: 'New order created, awaiting payment',
+      })
+    } catch (error) {
+      console.error('Error logging order to Google Sheets:', error)
+      // Don't fail the order creation if logging fails
+    }
 
     return NextResponse.json(order)
   } catch (error) {
