@@ -6,6 +6,8 @@ import { generateOrderNumber } from '@/lib/utils'
 import { getGoogleSheetsService } from '@/lib/google-sheets'
 import { z } from 'zod'
 
+export const dynamic = 'force-dynamic'
+
 const createOrderSchema = z.object({
   ticketTypeId: z.string(),
   quantity: z.number().int().positive(),

@@ -5,6 +5,8 @@ import { prisma } from '@/lib/prisma'
 import { getGoogleSheetsService } from '@/lib/google-sheets'
 import { z } from 'zod'
 
+export const dynamic = 'force-dynamic'
+
 const updateOrderSchema = z.object({
   status: z.enum(['PENDING', 'CONFIRMED', 'CANCELLED', 'REFUNDED']).optional(),
   paymentStatus: z.enum(['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED']).optional(),
