@@ -15,13 +15,13 @@ export default function EventDetails() {
           <div>
             <p className="text-lg text-gray-700 mb-6 leading-relaxed">
               Join us for the most vibrant and meaningful run of the year! The JCI Manila Color Run
-              is not just about running—it's about celebrating life, supporting mental health awareness,
+              is not just about running—it&apos;s about celebrating life, supporting mental health awareness,
               and creating unforgettable memories with friends and family.
             </p>
             <p className="text-lg text-gray-700 mb-6 leading-relaxed">
-              As you run through our colorful course, you'll be doused in safe, eco-friendly colored
+              As you run through our colorful course, you&apos;ll be doused in safe, eco-friendly colored
               powder at every kilometer. Each color represents a different aspect of mental wellness,
-              reminding us that mental health matters and that we're all in this together.
+              reminding us that mental health matters and that we&apos;re all in this together.
             </p>
             <p className="text-lg text-gray-700 leading-relaxed">
               All proceeds from this event will support mental health initiatives and awareness programs

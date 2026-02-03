@@ -27,10 +27,6 @@ export default function OrdersPage() {
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
 
-  useEffect(() => {
-    fetchOrders()
-  }, [search, statusFilter, page])
-
   const fetchOrders = async () => {
     setLoading(true)
     const params = new URLSearchParams({
@@ -51,6 +47,11 @@ export default function OrdersPage() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchOrders()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, statusFilter, page])
 
   const handleExport = async () => {
     const params = new URLSearchParams()

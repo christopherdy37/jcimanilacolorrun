@@ -39,7 +39,7 @@ export default function TermsPage() {
             <p>
               The event will proceed rain or shine. In case of severe weather or unforeseen circumstances,
               the organizers reserve the right to modify, postpone, or cancel the event. In case of cancellation,
-              tickets may be transferred to a rescheduled date or refunded at the organizers' discretion.
+              tickets may be transferred to a rescheduled date or refunded at the organizers&apos; discretion.
             </p>
           </section>
 

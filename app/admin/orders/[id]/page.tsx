@@ -36,12 +36,6 @@ export default function OrderDetailPage() {
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
 
-  useEffect(() => {
-    if (params.id) {
-      fetchOrder()
-    }
-  }, [params.id])
-
   const fetchOrder = async () => {
     try {
       const res = await fetch(`/api/admin/orders/${params.id}`)
@@ -55,6 +49,13 @@ export default function OrderDetailPage() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    if (params.id) {
+      fetchOrder()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.id])
 
   const updateOrderStatus = async (field: 'status' | 'paymentStatus', value: string) => {
     if (!order) return
