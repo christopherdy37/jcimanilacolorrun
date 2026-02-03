@@ -26,6 +26,10 @@ WORKDIR /app
 
 ENV NODE_ENV production
 
+# Ensure OpenSSL is available for Prisma (Debian slim has libssl3)
+RUN apt-get update -y && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
 RUN groupadd --system --gid 1001 nodejs
 RUN useradd --system --uid 1001 nextjs
 
