@@ -1,4 +1,5 @@
-FROM node:18-slim AS base
+# Use Debian Bullseye (11) - has libssl1.1 which Prisma needs
+FROM node:18-bullseye-slim AS base
 
 # Install dependencies only when needed
 FROM base AS deps
@@ -26,8 +27,8 @@ WORKDIR /app
 
 ENV NODE_ENV production
 
-# Ensure OpenSSL is available for Prisma (Debian slim has libssl3)
-RUN apt-get update -y && apt-get install -y --no-install-recommends openssl ca-certificates \
+# Install libssl1.1 for Prisma (Bullseye has it in default repos)
+RUN apt-get update -y && apt-get install -y --no-install-recommends libssl1.1 ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd --system --gid 1001 nodejs
