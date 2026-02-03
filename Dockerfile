@@ -1,8 +1,7 @@
-FROM node:18-alpine AS base
+FROM node:18-slim AS base
 
 # Install dependencies only when needed
 FROM base AS deps
-RUN apk add --no-cache libc6-compat openssl1.1-compat
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
@@ -11,7 +10,6 @@ RUN npm install --legacy-peer-deps
 
 # Rebuild the source code only when needed
 FROM base AS builder
-RUN apk add --no-cache openssl1.1-compat
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -28,11 +26,8 @@ WORKDIR /app
 
 ENV NODE_ENV production
 
-# Install OpenSSL for Prisma
-RUN apk add --no-cache openssl1.1-compat
-
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN groupadd --system --gid 1001 nodejs
+RUN useradd --system --uid 1001 nextjs
 
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
