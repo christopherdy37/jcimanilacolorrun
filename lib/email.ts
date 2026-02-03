@@ -8,7 +8,8 @@ interface EmailOptions {
 }
 
 class EmailService {
-  private transporter: nodemailer.Transporter
+  private transporter: nodemailer.Transporter | null = null
+  private configured = false
 
   constructor() {
     const smtpHost = process.env.SMTP_HOST
@@ -16,22 +17,27 @@ class EmailService {
     const smtpUser = process.env.SMTP_USER
     const smtpPassword = process.env.SMTP_PASSWORD
 
-    if (!smtpHost || !smtpUser || !smtpPassword) {
-      throw new Error('SMTP configuration is incomplete')
+    if (smtpHost && smtpUser && smtpPassword) {
+      this.transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpPort === 465,
+        auth: {
+          user: smtpUser,
+          pass: smtpPassword,
+        },
+      })
+      this.configured = true
+    } else {
+      console.warn('SMTP not configured – emails will not be sent')
     }
-
-    this.transporter = nodemailer.createTransport({
-      host: smtpHost,
-      port: smtpPort,
-      secure: smtpPort === 465,
-      auth: {
-        user: smtpUser,
-        pass: smtpPassword,
-      },
-    })
   }
 
   async sendEmail(options: EmailOptions): Promise<void> {
+    if (!this.configured || !this.transporter) {
+      console.warn('Email skipped (SMTP not configured):', options.subject)
+      return
+    }
     const from = process.env.SMTP_FROM || 'JCI Manila Color Run <noreply@jcimanilacolorrun.com>'
 
     await this.transporter.sendMail({
