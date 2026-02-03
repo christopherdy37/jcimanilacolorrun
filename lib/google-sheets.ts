@@ -17,8 +17,8 @@ interface OrderLogData {
 
 class GoogleSheetsService {
   private sheets: any
-  private spreadsheetId: string
-  private sheetName: string
+  private spreadsheetId: string = ''
+  private sheetName: string = 'Orders'
 
   constructor() {
     // Get credentials from environment variables
@@ -96,7 +96,7 @@ class GoogleSheetsService {
   }
 
   async logOrder(data: OrderLogData): Promise<void> {
-    if (!this.sheets || !this.spreadsheetId) {
+    if (!this.sheets || !this.spreadsheetId || this.spreadsheetId === '') {
       console.log('Google Sheets not configured. Order log:', data)
       return
     }
