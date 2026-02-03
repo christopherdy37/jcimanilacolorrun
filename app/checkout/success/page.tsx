@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
-export default function SuccessPage() {
+function SuccessContent() {
   const searchParams = useSearchParams()
   const orderId = searchParams.get('orderId')
   const [order, setOrder] = useState<any>(null)
@@ -44,6 +44,25 @@ export default function SuccessPage() {
         </Link>
       </div>
     </div>
+  )
+}
+
+function SuccessFallback() {
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
+        <p className="text-gray-600">Loading...</p>
+      </div>
+    </div>
+  )
+}
+
+export default function SuccessPage() {
+  return (
+    <Suspense fallback={<SuccessFallback />}>
+      <SuccessContent />
+    </Suspense>
   )
 }
 

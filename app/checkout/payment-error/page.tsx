@@ -1,12 +1,13 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
-export default function PaymentErrorPage() {
+function PaymentErrorContent() {
   const searchParams = useSearchParams()
   const reason = searchParams.get('reason')
-  
+
   const getErrorMessage = () => {
     if (reason === 'amount_mismatch') {
       return 'The payment amount does not match the order total. Please contact support for assistance.'
@@ -42,5 +43,24 @@ export default function PaymentErrorPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+function PaymentErrorFallback() {
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
+        <p className="text-gray-600">Loading...</p>
+      </div>
+    </div>
+  )
+}
+
+export default function PaymentErrorPage() {
+  return (
+    <Suspense fallback={<PaymentErrorFallback />}>
+      <PaymentErrorContent />
+    </Suspense>
   )
 }
