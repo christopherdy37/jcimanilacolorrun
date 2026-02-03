@@ -1,0 +1,97 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AdminUser {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String
+  name          String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("admin_users")
+}
+
+model TicketType {
+  id          String   @id @default(cuid())
+  name        String   @unique // e.g., "Premium"
+  description String?
+  price       Float
+  maxQuantity Int?     // null = unlimited
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  orders      Order[]
+
+  @@map("ticket_types")
+}
+
+model Order {
+  id                String   @id @default(cuid())
+  orderNumber       String   @unique // Human-readable order number
+  ticketTypeId      String
+  ticketType        TicketType @relation(fields: [ticketTypeId], references: [id])
+  quantity          Int
+  totalAmount       Float
+  status            OrderStatus @default(PENDING)
+  
+  // Customer information
+  customerName      String
+  customerEmail     String
+  customerPhone     String
+  shirtSize         String
+  emergencyContact  String
+  emergencyPhone    String
+  
+  // Payment information
+  paymentStatus     PaymentStatus @default(PENDING)
+  paymentTransactionId String?
+  paymentTransaction PaymentTransaction?
+  
+  // Metadata
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("orders")
+}
+
+model PaymentTransaction {
+  id            String   @id @default(cuid())
+  orderId       String   @unique
+  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  provider      String   // "stripe", "paymongo", "gcash"
+  providerTransactionId String? // External transaction ID
+  amount        Float
+  currency      String   @default("PHP")
+  status        PaymentStatus @default(PENDING)
+  metadata      Json?    // Store provider-specific data
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("payment_transactions")
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
