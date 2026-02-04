@@ -58,12 +58,34 @@ model Order {
   paymentStatus     PaymentStatus @default(PENDING)
   paymentTransactionId String?
   paymentTransaction PaymentTransaction?
+
+  // Assigned physical ticket codes (1 order can have many tickets)
+  ticketCodes       TicketCode[]
   
   // Metadata
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
   @@map("orders")
+}
+
+model TicketCode {
+  id            String   @id @default(cuid())
+
+  // Physical ticket identifiers (must be unique and never reused)
+  ticketNumber  String   @unique
+  ticketCode    String   @unique
+
+  // Reservation / assignment
+  orderId       String?
+  order         Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  assignedAt    DateTime?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([orderId])
+  @@map("ticket_codes")
 }
 
 model PaymentTransaction {

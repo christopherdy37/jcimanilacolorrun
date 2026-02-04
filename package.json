@@ -10,7 +10,8 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "tickets:import": "tsx scripts/import-ticket-codes-from-sheets.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.4.2",

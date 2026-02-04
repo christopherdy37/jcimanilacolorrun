@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getEmailService } from '@/lib/email'
+import { assignTicketCodesToOrder } from '@/lib/ticket-codes'
 
 // PayMaya webhook handler
 // PayMaya will send webhooks to this endpoint when payment status changes
@@ -49,6 +50,33 @@ export async function POST(request: Request) {
       }),
     ])
 
+    // Assign physical ticket number + code(s) (never repeats)
+    let assignedTickets: Array<{ ticketNumber: string; ticketCode: string }> = []
+    let ticketAssignmentPending = false
+    try {
+      const result = await assignTicketCodesToOrder({
+        orderId: transaction.orderId,
+        quantity: transaction.order.quantity,
+      })
+      assignedTickets = result.assigned
+      ticketAssignmentPending = result.insufficient
+      if (ticketAssignmentPending) {
+        console.warn(
+          '[TicketCodes] Not enough available codes to fully assign order:',
+          transaction.order.orderNumber,
+          'needed',
+          transaction.order.quantity,
+          'assigned',
+          assignedTickets.length
+        )
+      }
+    } catch (err) {
+      ticketAssignmentPending = true
+      console.error('[TicketCodes] Failed assigning ticket codes:', err)
+    }
+
+    // Webhook doesn't know "test mode" reliably; keep behavior real-only here.
+
     // Send confirmation email
     try {
       await getEmailService().sendOrderConfirmation({
@@ -58,6 +86,8 @@ export async function POST(request: Request) {
         ticketType: transaction.order.ticketType.name,
         quantity: transaction.order.quantity,
         totalAmount: transaction.order.totalAmount,
+        tickets: assignedTickets.length ? assignedTickets : undefined,
+        ticketAssignmentPending,
       })
     } catch (emailError) {
       console.error('Error sending confirmation email:', emailError)

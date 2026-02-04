@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getEmailService } from '@/lib/email'
 import { getGoogleSheetsService } from '@/lib/google-sheets'
+import { assignTicketCodesToOrder } from '@/lib/ticket-codes'
 
 export async function GET(request: Request) {
   try {
@@ -81,8 +82,43 @@ export async function GET(request: Request) {
         },
       })
 
-      // Send confirmation email
+      // Assign physical ticket number + code(s) (never repeats)
+      let assignedTickets: Array<{ ticketNumber: string; ticketCode: string }> = []
+      let ticketAssignmentPending = false
       try {
+        const result = await assignTicketCodesToOrder({
+          orderId: order.id,
+          quantity: order.quantity,
+        })
+        assignedTickets = result.assigned
+        ticketAssignmentPending = result.insufficient
+        if (ticketAssignmentPending) {
+          console.warn(
+            '[TicketCodes] Not enough available codes to fully assign order:',
+            order.orderNumber,
+            'needed',
+            order.quantity,
+            'assigned',
+            assignedTickets.length
+          )
+        }
+      } catch (err) {
+        ticketAssignmentPending = true
+        console.error('[TicketCodes] Failed assigning ticket codes:', err)
+      }
+
+      // Test mode: if no real ticket codes are available yet, include dummy codes
+      if (isTest && assignedTickets.length === 0) {
+        assignedTickets = Array.from({ length: Math.max(1, order.quantity) }).map((_, i) => ({
+          ticketNumber: `TEST-${String(i + 1).padStart(4, '0')}`,
+          ticketCode: `DUMMY-${order.orderNumber}-${i + 1}`,
+        }))
+        ticketAssignmentPending = false
+      }
+
+      // Send receipt email to customer
+      try {
+        console.log('[PayMaya callback] Sending receipt email to:', order.customerEmail)
         await getEmailService().sendOrderConfirmation({
           orderNumber: order.orderNumber,
           customerName: order.customerName,
@@ -90,9 +126,11 @@ export async function GET(request: Request) {
           ticketType: order.ticketType.name,
           quantity: order.quantity,
           totalAmount: order.totalAmount,
+          tickets: assignedTickets.length ? assignedTickets : undefined,
+          ticketAssignmentPending,
         })
       } catch (emailError) {
-        console.error('Error sending confirmation email:', emailError)
+        console.error('[PayMaya callback] Failed to send receipt email:', emailError)
         // Don't fail the callback if email fails
       }
 
