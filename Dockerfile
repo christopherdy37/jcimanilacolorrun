@@ -42,9 +42,10 @@ COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
 USER nextjs
 
-# Railway injects PORT at runtime (e.g. 8080). Next.js standalone reads process.env.PORT.
-EXPOSE 3000
-ENV PORT=3000
+# Railway injects PORT at runtime (e.g. 8080). Bind to all interfaces so the proxy can reach the app.
+EXPOSE 8080
+ENV PORT=8080
+ENV HOSTNAME=0.0.0.0
 
 CMD ["node", "server.js"]
 
