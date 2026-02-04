@@ -1,7 +1,16 @@
 'use client'
 
+import { useEffect, useState } from 'react'
+
 export default function Footer() {
-  const orderingEnabled = process.env.NEXT_PUBLIC_TICKET_ORDERING_ENABLED !== 'false'
+  const [orderingEnabled, setOrderingEnabled] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/ordering-status')
+      .then((res) => res.json())
+      .then((data) => setOrderingEnabled(data.ticketOrderingEnabled === true))
+      .catch(() => setOrderingEnabled(false))
+  }, [])
 
   return (
     <footer className="bg-gray-900 text-white py-12 px-4">

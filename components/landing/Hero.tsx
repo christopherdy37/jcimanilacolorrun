@@ -1,7 +1,16 @@
 'use client'
 
+import { useEffect, useState } from 'react'
+
 export default function Hero() {
-  const orderingEnabled = process.env.NEXT_PUBLIC_TICKET_ORDERING_ENABLED !== 'false'
+  const [orderingEnabled, setOrderingEnabled] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/ordering-status')
+      .then((res) => res.json())
+      .then((data) => setOrderingEnabled(data.ticketOrderingEnabled === true))
+      .catch(() => setOrderingEnabled(false))
+  }, [])
 
   return (
     <section className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-500 via-accent-pink to-accent-blue overflow-hidden">

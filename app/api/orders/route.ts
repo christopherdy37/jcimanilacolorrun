@@ -21,6 +21,15 @@ const createOrderSchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    const orderingEnabled =
+      String(process.env.NEXT_PUBLIC_TICKET_ORDERING_ENABLED ?? '').toLowerCase().trim() === 'true'
+    if (!orderingEnabled) {
+      return NextResponse.json(
+        { error: 'Ticket ordering is temporarily disabled' },
+        { status: 503 }
+      )
+    }
+
     const body = await request.json()
     const validated = createOrderSchema.parse(body)
 

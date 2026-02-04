@@ -19,6 +19,14 @@ export default function TicketSection() {
   const [loading, setLoading] = useState(true)
   const [selectedTicket, setSelectedTicket] = useState<TicketType | null>(null)
   const [showCheckout, setShowCheckout] = useState(false)
+  const [orderingEnabled, setOrderingEnabled] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/ordering-status')
+      .then((res) => res.json())
+      .then((data) => setOrderingEnabled(data.ticketOrderingEnabled === true))
+      .catch(() => setOrderingEnabled(false))
+  }, [])
 
   useEffect(() => {
     fetch('/api/tickets')
@@ -44,8 +52,6 @@ export default function TicketSection() {
         setLoading(false)
       })
   }, [])
-
-  const orderingEnabled = process.env.NEXT_PUBLIC_TICKET_ORDERING_ENABLED !== 'false'
 
   const handleBuyTicket = (ticket: TicketType) => {
     if (!orderingEnabled) return
