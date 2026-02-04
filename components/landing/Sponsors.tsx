@@ -1,9 +1,16 @@
 'use client'
 
+import Image from 'next/image'
+
 export default function Sponsors() {
-  // Placeholder sponsor data
+  // Sponsor data – first sponsor uses image and custom subtitle
   const sponsors = [
-    { name: 'Sponsor 1', tier: 'platinum' },
+    {
+      name: 'TKL Steel Corp',
+      tier: 'platinum',
+      image: '/images/sponsors/sponsor1.jpeg',
+      subtitle: 'Platinum Partner', // custom text under name instead of "platinum sponsor"
+    },
     { name: 'Sponsor 2', tier: 'gold' },
     { name: 'Sponsor 3', tier: 'gold' },
     { name: 'Sponsor 4', tier: 'silver' },
@@ -43,15 +50,30 @@ export default function Sponsors() {
               key={index}
               className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-8 text-center border-2 border-gray-200 hover:border-primary-300 transition-all"
             >
-              <div
-                className={`w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br ${getTierColor(
-                  sponsor.tier
-                )} flex items-center justify-center text-white font-bold text-xl`}
-              >
-                {sponsor.name.charAt(0)}
-              </div>
+              {'image' in sponsor && sponsor.image ? (
+                <div className="relative w-32 h-32 mx-auto mb-4 rounded-lg overflow-hidden">
+                  <Image
+                    src={sponsor.image}
+                    alt={sponsor.name}
+                    fill
+                    className="object-contain"
+                  />
+                </div>
+              ) : (
+                <div
+                  className={`w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br ${getTierColor(
+                    sponsor.tier
+                  )} flex items-center justify-center text-white font-bold text-xl`}
+                >
+                  {sponsor.name.charAt(0)}
+                </div>
+              )}
               <h3 className="font-semibold text-gray-900 mb-2">{sponsor.name}</h3>
-              <span className="text-sm text-gray-600 capitalize">{sponsor.tier} Sponsor</span>
+              <span className="text-sm text-gray-600">
+                {'subtitle' in sponsor && sponsor.subtitle
+                  ? sponsor.subtitle
+                  : `${sponsor.tier} Sponsor`}
+              </span>
             </div>
           ))}
         </div>
