@@ -9,7 +9,7 @@ export default function Sponsors() {
       name: 'TKL Steel Corp',
       tier: 'platinum',
       image: '/images/sponsors/sponsor1.jpeg',
-      subtitle: 'Platinum Partner', // custom text under name instead of "platinum sponsor"
+      subtitle: '', // no text under name
     },
     { name: 'Sponsor 2', tier: 'gold' },
     { name: 'Sponsor 3', tier: 'gold' },
@@ -51,7 +51,7 @@ export default function Sponsors() {
               className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-8 text-center border-2 border-gray-200 hover:border-primary-300 transition-all"
             >
               {'image' in sponsor && sponsor.image ? (
-                <div className="relative w-32 h-32 mx-auto mb-4 rounded-lg overflow-hidden">
+                <div className="relative w-48 h-48 mx-auto mb-4 rounded-lg overflow-hidden">
                   <Image
                     src={sponsor.image}
                     alt={sponsor.name}
@@ -69,11 +69,11 @@ export default function Sponsors() {
                 </div>
               )}
               <h3 className="font-semibold text-gray-900 mb-2">{sponsor.name}</h3>
-              <span className="text-sm text-gray-600">
-                {'subtitle' in sponsor && sponsor.subtitle
-                  ? sponsor.subtitle
-                  : `${sponsor.tier} Sponsor`}
-              </span>
+              {(!('subtitle' in sponsor) || sponsor.subtitle) && (
+                <span className="text-sm text-gray-600">
+                  {'subtitle' in sponsor && sponsor.subtitle ? sponsor.subtitle : `${sponsor.tier} Sponsor`}
+                </span>
+              )}
             </div>
           ))}
         </div>
