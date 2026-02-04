@@ -3,16 +3,28 @@
 import Image from 'next/image'
 
 export default function Sponsors() {
-  // Sponsor data – first sponsor uses image and custom subtitle
+  // Sponsor data – first three use images; sponsor 1 has no name text and larger image
   const sponsors = [
     {
       name: 'TKL Steel Corp',
       tier: 'platinum',
       image: '/images/sponsors/sponsor1.jpeg',
-      subtitle: '', // no text under name
+      subtitle: '',
+      hideName: true,
+      largeImage: true,
     },
-    { name: 'Sponsor 2', tier: 'gold' },
-    { name: 'Sponsor 3', tier: 'gold' },
+    {
+      name: 'Sponsor 2',
+      tier: 'gold',
+      image: '/images/sponsors/sponsor2.jpeg',
+      subtitle: '',
+    },
+    {
+      name: 'Sponsor 3',
+      tier: 'gold',
+      image: '/images/sponsors/sponsor3.jpeg',
+      subtitle: '',
+    },
     { name: 'Sponsor 4', tier: 'silver' },
     { name: 'Sponsor 5', tier: 'silver' },
     { name: 'Sponsor 6', tier: 'silver' },
@@ -51,7 +63,11 @@ export default function Sponsors() {
               className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-8 text-center border-2 border-gray-200 hover:border-primary-300 transition-all"
             >
               {'image' in sponsor && sponsor.image ? (
-                <div className="relative w-48 h-48 mx-auto mb-4 rounded-lg overflow-hidden">
+                <div
+                  className={`relative mx-auto mb-4 rounded-lg overflow-hidden ${
+                    'largeImage' in sponsor && sponsor.largeImage ? 'w-64 h-64' : 'w-48 h-48'
+                  }`}
+                >
                   <Image
                     src={sponsor.image}
                     alt={sponsor.name}
@@ -68,7 +84,9 @@ export default function Sponsors() {
                   {sponsor.name.charAt(0)}
                 </div>
               )}
-              <h3 className="font-semibold text-gray-900 mb-2">{sponsor.name}</h3>
+              {!('hideName' in sponsor && sponsor.hideName) && (
+                <h3 className="font-semibold text-gray-900 mb-2">{sponsor.name}</h3>
+              )}
               {(!('subtitle' in sponsor) || sponsor.subtitle) && (
                 <span className="text-sm text-gray-600">
                   {'subtitle' in sponsor && sponsor.subtitle ? sponsor.subtitle : `${sponsor.tier} Sponsor`}
