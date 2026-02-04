@@ -10,7 +10,10 @@ function PaymentErrorContent() {
 
   const getErrorMessage = () => {
     if (reason === 'amount_mismatch') {
-      return 'The payment amount does not match the order total. Please contact support for assistance.'
+      return 'The payment amount does not match the order total. Your order was not confirmed. Please pay the correct amount (see your order email) or contact support.'
+    }
+    if (reason === 'amount_unverified') {
+      return 'We could not verify the payment amount. Please contact support with your order number so we can confirm your payment.'
     }
     return 'There was an issue processing your payment. Please try again or contact support if the problem persists.'
   }

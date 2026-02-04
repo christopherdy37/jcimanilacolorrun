@@ -45,7 +45,10 @@ export default function TicketSection() {
       })
   }, [])
 
+  const orderingEnabled = process.env.NEXT_PUBLIC_TICKET_ORDERING_ENABLED !== 'false'
+
   const handleBuyTicket = (ticket: TicketType) => {
+    if (!orderingEnabled) return
     setSelectedTicket(ticket)
     setShowCheckout(true)
   }
@@ -120,10 +123,16 @@ export default function TicketSection() {
                           </div>
 
                           <button
+                            type="button"
                             onClick={() => handleBuyTicket(ticket)}
-                            className="w-full bg-gradient-to-r from-primary-500 to-accent-pink text-white py-3 rounded-lg font-semibold hover:from-primary-600 hover:to-accent-pink/90 transition-all shadow-lg"
+                            disabled={!orderingEnabled}
+                            className={`w-full py-3 rounded-lg font-semibold transition-all shadow-lg ${
+                              orderingEnabled
+                                ? 'bg-gradient-to-r from-primary-500 to-accent-pink text-white hover:from-primary-600 hover:to-accent-pink/90 cursor-pointer'
+                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            }`}
                           >
-                            Buy Tickets
+                            {orderingEnabled ? 'Buy Tickets' : 'Temporarily unavailable'}
                           </button>
                         </div>
                         <div className="md:w-1/2 w-full flex justify-center">
@@ -183,10 +192,16 @@ export default function TicketSection() {
                           </div>
 
                           <button
+                            type="button"
                             onClick={() => handleBuyTicket(ticket)}
-                            className="w-full bg-gradient-to-r from-primary-500 to-accent-pink text-white py-3 rounded-lg font-semibold hover:from-primary-600 hover:to-accent-pink/90 transition-all shadow-lg"
+                            disabled={!orderingEnabled}
+                            className={`w-full py-3 rounded-lg font-semibold transition-all shadow-lg ${
+                              orderingEnabled
+                                ? 'bg-gradient-to-r from-primary-500 to-accent-pink text-white hover:from-primary-600 hover:to-accent-pink/90 cursor-pointer'
+                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            }`}
                           >
-                            Buy Tickets
+                            {orderingEnabled ? 'Buy Tickets' : 'Temporarily unavailable'}
                           </button>
                         </div>
                       </div>

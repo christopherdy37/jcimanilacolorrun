@@ -35,21 +35,24 @@ export async function GET(request: Request) {
       return NextResponse.redirect(new URL(`/checkout/success?orderId=${orderId}`, request.url))
     }
 
-    // Verify payment amount matches order amount
+    // Verify payment amount matches order amount (when PayMaya sends it back in redirect)
+    const expectedAmount = order.totalAmount
     if (paidAmount) {
       const paidAmountNum = parseFloat(paidAmount)
-      const expectedAmount = order.totalAmount
-      
       // Allow small rounding differences (0.01)
       if (Math.abs(paidAmountNum - expectedAmount) > 0.01) {
         console.error(`Payment amount mismatch for order ${orderId}: Expected ${expectedAmount}, got ${paidAmountNum}`)
         return NextResponse.redirect(new URL('/checkout/payment-error?reason=amount_mismatch', request.url))
       }
+    } else if (process.env.REQUIRE_AMOUNT_VERIFICATION === 'true') {
+      // Strict mode: do not confirm unless we received and verified the amount.
+      // Maya does NOT include paid amount in the success redirect URL — do NOT use this with Maya or every payment will fail.
+      console.warn(`Payment amount not returned for order ${orderId}. Redirecting to error (REQUIRE_AMOUNT_VERIFICATION=true).`)
+      return NextResponse.redirect(new URL('/checkout/payment-error?reason=amount_unverified', request.url))
     }
 
     // For PayMaya, we'll mark payment as completed when user returns from PayMaya
-    // In production, you should verify payment status with PayMaya's API
-    // For now, we'll update the order status and send email
+    // In production, verify via PayMaya API if redirect does not include amount
     if (status === 'success' || invoiceId) {
       // Update payment transaction if it exists
       if (order.paymentTransaction) {

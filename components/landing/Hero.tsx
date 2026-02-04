@@ -1,6 +1,8 @@
 'use client'
 
 export default function Hero() {
+  const orderingEnabled = process.env.NEXT_PUBLIC_TICKET_ORDERING_ENABLED !== 'false'
+
   return (
     <section className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-500 via-accent-pink to-accent-blue overflow-hidden">
       <div className="absolute inset-0 bg-black/20"></div>
@@ -47,12 +49,21 @@ export default function Hero() {
           </div>
         </div>
 
-        <a
-          href="#tickets"
-          className="inline-block bg-red-600 text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-red-700 transition-all transform hover:scale-105 shadow-xl"
-        >
-          Buy Tickets Now
-        </a>
+        {orderingEnabled ? (
+          <a
+            href="#tickets"
+            className="inline-block bg-red-600 text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-red-700 transition-all transform hover:scale-105 shadow-xl"
+          >
+            Buy Tickets Now
+          </a>
+        ) : (
+          <span
+            className="inline-block bg-gray-400 text-white px-8 py-4 rounded-full font-bold text-lg cursor-not-allowed shadow-xl"
+            aria-label="Ticket ordering temporarily unavailable"
+          >
+            Tickets coming soon
+          </span>
+        )}
       </div>
 
       <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 animate-bounce">

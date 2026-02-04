@@ -1,6 +1,8 @@
 'use client'
 
 export default function Footer() {
+  const orderingEnabled = process.env.NEXT_PUBLIC_TICKET_ORDERING_ENABLED !== 'false'
+
   return (
     <footer className="bg-gray-900 text-white py-12 px-4">
       <div className="max-w-6xl mx-auto">
@@ -26,9 +28,13 @@ export default function Footer() {
                 </a>
               </li>
               <li>
-                <a href="#tickets" className="hover:text-white transition-colors">
-                  Buy Tickets
-                </a>
+                {orderingEnabled ? (
+                  <a href="#tickets" className="hover:text-white transition-colors">
+                    Buy Tickets
+                  </a>
+                ) : (
+                  <span className="text-gray-500">Tickets (coming soon)</span>
+                )}
               </li>
               <li>
                 <a href="#schedule" className="hover:text-white transition-colors">
