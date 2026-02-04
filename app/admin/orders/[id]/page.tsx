@@ -163,10 +163,6 @@ export default function OrderDetailPage() {
               <p className="text-gray-900">{order.customerPhone}</p>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-500">Shirt Size</label>
-              <p className="text-gray-900">{order.shirtSize}</p>
-            </div>
-            <div>
               <label className="text-sm font-medium text-gray-500">Emergency Contact</label>
               <p className="text-gray-900">{order.emergencyContact}</p>
             </div>

@@ -82,6 +82,8 @@ Each log entry includes:
 - Order Status
 - Payment Status
 - Action Type
+- **Ticket Number(s)** – filled on PAYMENT_COMPLETED (one per line in the cell if multiple)
+- **Ticket Code(s)** – filled on PAYMENT_COMPLETED (one per line in the cell if multiple)
 - Notes (additional context)
 
 ## Troubleshooting
@@ -100,6 +102,15 @@ Each log entry includes:
 - Verify the spreadsheet ID is correct
 - Ensure the sheet name matches `GOOGLE_SHEETS_NAME` (default: "Orders")
 - Check that the sheet exists and is accessible
+
+### Columns not aligning / completed order logs in wrong columns
+- The app writes **14 columns** in this order: Timestamp, Order Number, Customer Name, Customer Email, Customer Phone, Ticket Type, Quantity, Total Amount, Order Status, Payment Status, Action, **Ticket Number(s)**, **Ticket Code(s)**, Notes.
+- If your sheet had the old 12-column header, the app now **updates the header row** to 14 columns when logging so all rows align. Refresh the sheet or trigger one new log to apply.
+
+### Only 1 ticket showing when customer bought more (e.g. 4)
+- Each paid order gets **one row per ticket** in the pool: the app assigns `quantity` tickets and writes them **one per line** in the Ticket Number(s) and Ticket Code(s) cells.
+- If only 1 ticket appears for a 4-ticket order, the **ticket code pool** may have run out: import more codes with `npm run tickets:import` (see TICKET_CODES_IMPORT.md).
+- In Excel/Sheets, make sure the cell is not truncated (widen the column or wrap text) so all lines are visible.
 
 ## Security Notes
 

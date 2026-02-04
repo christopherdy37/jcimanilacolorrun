@@ -134,11 +134,17 @@ export async function GET(request: Request) {
         // Don't fail the callback if email fails
       }
 
-      // Log payment completion to Google Sheets
+      // Log payment completion to Google Sheets (with ticket number(s) and code(s))
       try {
         const notes = isTest
           ? `[TEST] Payment simulated (no real charge). Invoice ID: ${invoiceId || 'N/A'}`
           : `Payment completed via PayMaya. Invoice ID: ${invoiceId || 'N/A'}`
+        const ticketNumbers = assignedTickets.length
+          ? assignedTickets.map((t) => t.ticketNumber).join('\n')
+          : ''
+        const ticketCodes = assignedTickets.length
+          ? assignedTickets.map((t) => t.ticketCode).join('\n')
+          : ''
         await getGoogleSheetsService().logOrder({
           timestamp: new Date().toISOString(),
           orderNumber: order.orderNumber,
@@ -151,6 +157,8 @@ export async function GET(request: Request) {
           orderStatus: 'CONFIRMED',
           paymentStatus: 'COMPLETED',
           action: 'PAYMENT_COMPLETED',
+          ticketNumbers: ticketNumbers || undefined,
+          ticketCodes: ticketCodes || undefined,
           notes,
         })
       } catch (logError) {
@@ -228,6 +236,21 @@ export async function POST(request: Request) {
       }),
     ])
 
+    // Assign physical ticket number + code(s) (never repeats)
+    let assignedTickets: Array<{ ticketNumber: string; ticketCode: string }> = []
+    let ticketAssignmentPending = false
+    try {
+      const result = await assignTicketCodesToOrder({
+        orderId: transaction.orderId,
+        quantity: transaction.order.quantity,
+      })
+      assignedTickets = result.assigned
+      ticketAssignmentPending = result.insufficient
+    } catch (err) {
+      ticketAssignmentPending = true
+      console.error('[TicketCodes] Failed assigning ticket codes (webhook):', err)
+    }
+
     // Send confirmation email
     try {
       await getEmailService().sendOrderConfirmation({
@@ -237,13 +260,21 @@ export async function POST(request: Request) {
         ticketType: transaction.order.ticketType.name,
         quantity: transaction.order.quantity,
         totalAmount: transaction.order.totalAmount,
+        tickets: assignedTickets.length ? assignedTickets : undefined,
+        ticketAssignmentPending,
       })
     } catch (emailError) {
       console.error('Error sending confirmation email:', emailError)
     }
 
-    // Log payment completion to Google Sheets (webhook)
+    // Log payment completion to Google Sheets (webhook) with ticket number(s) and code(s)
     try {
+      const ticketNumbers = assignedTickets.length
+        ? assignedTickets.map((t) => t.ticketNumber).join('\n')
+        : ''
+      const ticketCodes = assignedTickets.length
+        ? assignedTickets.map((t) => t.ticketCode).join('\n')
+        : ''
       await getGoogleSheetsService().logOrder({
         timestamp: new Date().toISOString(),
         orderNumber: transaction.order.orderNumber,
@@ -256,6 +287,8 @@ export async function POST(request: Request) {
         orderStatus: 'CONFIRMED',
         paymentStatus: 'COMPLETED',
         action: 'PAYMENT_COMPLETED',
+        ticketNumbers: ticketNumbers || undefined,
+        ticketCodes: ticketCodes || undefined,
         notes: `Payment completed via PayMaya webhook. Invoice ID: ${invoiceId}`,
       })
     } catch (logError) {

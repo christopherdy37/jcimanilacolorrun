@@ -12,6 +12,8 @@ interface OrderLogData {
   orderStatus: string
   paymentStatus: string
   action: string // 'ORDER_CREATED', 'PAYMENT_COMPLETED', 'STATUS_UPDATED'
+  ticketNumbers?: string // newline-separated when multiple (on payment completion)
+  ticketCodes?: string   // newline-separated when multiple (on payment completion)
   notes?: string
 }
 
@@ -62,40 +64,79 @@ class GoogleSheetsService {
     }
   }
 
+  private static readonly HEADERS_14 = [
+    'Timestamp',
+    'Order Number',
+    'Customer Name',
+    'Customer Email',
+    'Customer Phone',
+    'Ticket Type',
+    'Quantity',
+    'Total Amount',
+    'Order Status',
+    'Payment Status',
+    'Action',
+    'Ticket Number(s)',
+    'Ticket Code(s)',
+    'Notes',
+  ]
+
   private async initializeSheet() {
     try {
-      // Check if sheet exists and has headers
       const response = await this.sheets.spreadsheets.values.get({
         spreadsheetId: this.spreadsheetId,
-        range: `${this.sheetRangeName}!A1:J1`,
+        range: `${this.sheetRangeName}!A1:N1`,
       })
 
-      // If no data, create headers
-      if (!response.data.values || response.data.values.length === 0) {
+      const firstRow = response.data.values?.[0] ?? []
+
+      // No data: create full 14-column header
+      if (firstRow.length === 0) {
         await this.sheets.spreadsheets.values.append({
           spreadsheetId: this.spreadsheetId,
           range: `${this.sheetRangeName}!A1`,
           valueInputOption: 'RAW',
           requestBody: {
-            values: [[
-              'Timestamp',
-              'Order Number',
-              'Customer Name',
-              'Customer Email',
-              'Customer Phone',
-              'Ticket Type',
-              'Quantity',
-              'Total Amount',
-              'Order Status',
-              'Payment Status',
-              'Action',
-              'Notes'
-            ]],
+            values: [GoogleSheetsService.HEADERS_14],
+          },
+        })
+        return
+      }
+
+      // Existing sheet with old 12-column header: update row 1 to 14 columns so all rows align
+      if (firstRow.length === 12) {
+        await this.sheets.spreadsheets.values.update({
+          spreadsheetId: this.spreadsheetId,
+          range: `${this.sheetRangeName}!A1:N1`,
+          valueInputOption: 'RAW',
+          requestBody: {
+            values: [GoogleSheetsService.HEADERS_14],
           },
         })
       }
     } catch (error) {
       console.error('Error initializing Google Sheet:', error)
+    }
+  }
+
+  /** Ensure header row has 14 columns so all appended rows align (fixes existing 12-column sheets). */
+  private async ensureHeader14Columns(): Promise<void> {
+    try {
+      const res = await this.sheets.spreadsheets.values.get({
+        spreadsheetId: this.spreadsheetId,
+        range: `${this.sheetRangeName}!A1:N1`,
+      })
+      const firstRow = res.data.values?.[0] ?? []
+      if (firstRow.length === 12) {
+        await this.sheets.spreadsheets.values.update({
+          spreadsheetId: this.spreadsheetId,
+          range: `${this.sheetRangeName}!A1:N1`,
+          valueInputOption: 'RAW',
+          requestBody: { values: [GoogleSheetsService.HEADERS_14] },
+        })
+      }
+    } catch {
+      // ignore; append will still work
     }
   }
 
@@ -106,6 +147,8 @@ class GoogleSheetsService {
     }
 
     try {
+      await this.ensureHeader14Columns()
+
       const row = [
         data.timestamp,
         data.orderNumber,
@@ -118,6 +161,8 @@ class GoogleSheetsService {
         data.orderStatus,
         data.paymentStatus,
         data.action,
+        data.ticketNumbers ?? '',
+        data.ticketCodes ?? '',
         data.notes || '',
       ]
 

@@ -11,9 +11,6 @@ const checkoutSchema = z.object({
   customerName: z.string().min(1, 'Name is required'),
   customerEmail: z.string().email('Invalid email address'),
   customerPhone: z.string().min(1, 'Phone number is required'),
-  shirtSize: z.enum(['XS', 'S', 'M', 'L', 'XL', 'XXL'], {
-    required_error: 'Please select a shirt size',
-  }),
   emergencyContact: z.string().min(1, 'Emergency contact is required'),
   emergencyPhone: z.string().min(1, 'Emergency phone is required'),
 })
@@ -215,27 +212,6 @@ export default function CheckoutModal({ ticket, onClose }: CheckoutModalProps) {
             />
             {errors.customerPhone && (
               <p className="mt-1 text-sm text-red-600">{errors.customerPhone.message}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Shirt Size *
-            </label>
-            <select
-              {...register('shirtSize')}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            >
-              <option value="">Select size</option>
-              <option value="XS">XS</option>
-              <option value="S">S</option>
-              <option value="M">M</option>
-              <option value="L">L</option>
-              <option value="XL">XL</option>
-              <option value="XXL">XXL</option>
-            </select>
-            {errors.shirtSize && (
-              <p className="mt-1 text-sm text-red-600">{errors.shirtSize.message}</p>
             )}
           </div>
 

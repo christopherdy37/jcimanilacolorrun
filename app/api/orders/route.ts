@@ -14,7 +14,7 @@ const createOrderSchema = z.object({
   customerName: z.string().min(1),
   customerEmail: z.string().email(),
   customerPhone: z.string().min(1),
-  shirtSize: z.string(),
+  shirtSize: z.string().optional(),
   emergencyContact: z.string().min(1),
   emergencyPhone: z.string().min(1),
 })
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
         customerName: validated.customerName,
         customerEmail: validated.customerEmail,
         customerPhone: validated.customerPhone,
-        shirtSize: validated.shirtSize,
+        shirtSize: validated.shirtSize ?? '',
         emergencyContact: validated.emergencyContact,
         emergencyPhone: validated.emergencyPhone,
       },
