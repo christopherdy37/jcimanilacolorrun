@@ -32,6 +32,32 @@ export async function POST(request: Request) {
       )
     }
 
+    // Test mode: skip PayMaya and redirect to test page to choose success or failure
+    const isTestMode = process.env.PAYMENT_TEST_MODE === 'true'
+    if (isTestMode) {
+      const origin = new URL(request.url).origin
+      const paymentUrl = `${origin}/checkout/test-payment?orderId=${order.id}`
+      await prisma.paymentTransaction.create({
+        data: {
+          orderId: order.id,
+          provider: 'paymaya',
+          providerTransactionId: `test-${Date.now()}`,
+          amount: order.totalAmount,
+          status: 'PENDING',
+          metadata: {
+            orderNumber: order.orderNumber,
+            customerEmail: order.customerEmail,
+            paymentUrl,
+            test: true,
+          },
+        },
+      })
+      return NextResponse.json({
+        paymentIntentId: `test-${order.id}`,
+        paymentUrl,
+      })
+    }
+
     const paymentProvider = getPaymentProvider()
     const paymentIntent = await paymentProvider.createPaymentIntent(
       order.totalAmount,

@@ -2,51 +2,26 @@
 
 import Image from 'next/image'
 
+// All sponsor images from public/images/sponsors – images only, no text or boxes
+const SPONSOR_IMAGES = [
+  '/images/sponsors/sponsor1.jpeg',
+  '/images/sponsors/sponsor2.jpeg',
+  '/images/sponsors/sponsor3.jpeg',
+  '/images/sponsors/sponsor4.jpeg',
+  '/images/sponsors/sponsor5.jpeg',
+  '/images/sponsors/sponsor6.png',
+  '/images/sponsors/sponsor7.png',
+  '/images/sponsors/sponsor8.png',
+  '/images/sponsors/sponsor9.png',
+  '/images/sponsors/sponsor10.png',
+  '/images/sponsors/sponsor11.png',
+]
+
 export default function Sponsors() {
-  // Sponsor data – first three use images; sponsor 1 has no name text and larger image
-  const sponsors = [
-    {
-      name: 'TKL Steel Corp',
-      tier: 'platinum',
-      image: '/images/sponsors/sponsor1.jpeg',
-      subtitle: '',
-      hideName: true,
-      largeImage: true,
-    },
-    {
-      name: 'Sponsor 2',
-      tier: 'gold',
-      image: '/images/sponsors/sponsor2.jpeg',
-      subtitle: '',
-    },
-    {
-      name: 'Sponsor 3',
-      tier: 'gold',
-      image: '/images/sponsors/sponsor3.jpeg',
-      subtitle: '',
-    },
-    { name: 'Sponsor 4', tier: 'silver' },
-    { name: 'Sponsor 5', tier: 'silver' },
-    { name: 'Sponsor 6', tier: 'silver' },
-  ]
-
-  const getTierColor = (tier: string) => {
-    switch (tier) {
-      case 'platinum':
-        return 'from-gray-400 to-gray-600'
-      case 'gold':
-        return 'from-yellow-400 to-yellow-600'
-      case 'silver':
-        return 'from-gray-300 to-gray-500'
-      default:
-        return 'from-gray-200 to-gray-400'
-    }
-  }
-
   return (
-    <section id="sponsors" className="py-20 px-4 bg-white">
+    <section id="sponsors" className="py-16 px-4 bg-white">
       <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-12">
+        <div className="text-center mb-10">
           <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
             Our Sponsors
           </h2>
@@ -56,42 +31,16 @@ export default function Sponsors() {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8">
-          {sponsors.map((sponsor, index) => (
-            <div
-              key={index}
-              className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-8 text-center border-2 border-gray-200 hover:border-primary-300 transition-all"
-            >
-              {'image' in sponsor && sponsor.image ? (
-                <div
-                  className={`relative mx-auto mb-4 rounded-lg overflow-hidden ${
-                    'largeImage' in sponsor && sponsor.largeImage ? 'w-64 h-64' : 'w-48 h-48'
-                  }`}
-                >
-                  <Image
-                    src={sponsor.image}
-                    alt={sponsor.name}
-                    fill
-                    className="object-contain"
-                  />
-                </div>
-              ) : (
-                <div
-                  className={`w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br ${getTierColor(
-                    sponsor.tier
-                  )} flex items-center justify-center text-white font-bold text-xl`}
-                >
-                  {sponsor.name.charAt(0)}
-                </div>
-              )}
-              {!('hideName' in sponsor && sponsor.hideName) && (
-                <h3 className="font-semibold text-gray-900 mb-2">{sponsor.name}</h3>
-              )}
-              {(!('subtitle' in sponsor) || sponsor.subtitle) && (
-                <span className="text-sm text-gray-600">
-                  {'subtitle' in sponsor && sponsor.subtitle ? sponsor.subtitle : `${sponsor.tier} Sponsor`}
-                </span>
-              )}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 md:gap-8 items-center justify-items-center">
+          {SPONSOR_IMAGES.map((src, index) => (
+            <div key={index} className="relative w-32 h-32 sm:w-40 sm:h-40 flex items-center justify-center">
+              <Image
+                src={src}
+                alt={`Sponsor ${index + 1}`}
+                fill
+                className="object-contain"
+                sizes="(max-width: 640px) 128px, 160px"
+              />
             </div>
           ))}
         </div>

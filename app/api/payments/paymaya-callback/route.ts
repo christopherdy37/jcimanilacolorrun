@@ -10,6 +10,7 @@ export async function GET(request: Request) {
     const invoiceId = searchParams.get('invoiceId')
     const status = searchParams.get('status') // PayMaya may pass payment status
     const paidAmount = searchParams.get('amount') // Amount paid (if PayMaya returns it)
+    const isTest = searchParams.get('test') === '1'
 
     if (!orderId) {
       return NextResponse.redirect(new URL('/checkout/payment-error', request.url))
@@ -97,6 +98,9 @@ export async function GET(request: Request) {
 
       // Log payment completion to Google Sheets
       try {
+        const notes = isTest
+          ? `[TEST] Payment simulated (no real charge). Invoice ID: ${invoiceId || 'N/A'}`
+          : `Payment completed via PayMaya. Invoice ID: ${invoiceId || 'N/A'}`
         await getGoogleSheetsService().logOrder({
           timestamp: new Date().toISOString(),
           orderNumber: order.orderNumber,
@@ -109,7 +113,7 @@ export async function GET(request: Request) {
           orderStatus: 'CONFIRMED',
           paymentStatus: 'COMPLETED',
           action: 'PAYMENT_COMPLETED',
-          notes: `Payment completed via PayMaya. Invoice ID: ${invoiceId || 'N/A'}`,
+          notes,
         })
       } catch (logError) {
         console.error('Error logging payment to Google Sheets:', logError)

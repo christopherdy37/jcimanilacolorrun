@@ -19,6 +19,8 @@ class GoogleSheetsService {
   private sheets: any
   private spreadsheetId: string = ''
   private sheetName: string = 'Orders'
+  /** Sheet name quoted for A1 range (required when name has spaces/special chars) */
+  private sheetRangeName: string = "'Orders'"
 
   constructor() {
     // Get credentials from environment variables
@@ -48,6 +50,8 @@ class GoogleSheetsService {
       this.sheets = google.sheets({ version: 'v4', auth })
       this.spreadsheetId = spreadsheetId
       this.sheetName = sheetName
+      // Quote sheet name for A1 range when it contains spaces or special characters
+      this.sheetRangeName = /[\s,'"]/.test(sheetName) ? `'${sheetName.replace(/'/g, "''")}'` : sheetName
 
       // Initialize sheet headers if needed (async, don't await)
       this.initializeSheet().catch((err) => {
@@ -63,14 +67,14 @@ class GoogleSheetsService {
       // Check if sheet exists and has headers
       const response = await this.sheets.spreadsheets.values.get({
         spreadsheetId: this.spreadsheetId,
-        range: `${this.sheetName}!A1:J1`,
+        range: `${this.sheetRangeName}!A1:J1`,
       })
 
       // If no data, create headers
       if (!response.data.values || response.data.values.length === 0) {
         await this.sheets.spreadsheets.values.append({
           spreadsheetId: this.spreadsheetId,
-          range: `${this.sheetName}!A1`,
+          range: `${this.sheetRangeName}!A1`,
           valueInputOption: 'RAW',
           requestBody: {
             values: [[
@@ -119,7 +123,7 @@ class GoogleSheetsService {
 
       await this.sheets.spreadsheets.values.append({
         spreadsheetId: this.spreadsheetId,
-        range: `${this.sheetName}!A:Z`,
+        range: `${this.sheetRangeName}!A:Z`,
         valueInputOption: 'RAW',
         requestBody: {
           values: [row],
