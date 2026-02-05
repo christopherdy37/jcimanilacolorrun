@@ -1,4 +1,4 @@
-// PayMaya payment provider
+// PayMaya (Maya Checkout) payment provider
 
 export interface PaymentIntent {
   id: string
@@ -14,16 +14,34 @@ export interface PaymentProviderInterface {
   retrievePaymentIntent(paymentIntentId: string): Promise<PaymentIntent>
 }
 
-// PayMaya implementation
+/**
+ * PayMaya (Maya Checkout) implementation using the
+ * /checkout/v1/checkouts API to generate a hosted payment page.
+ *
+ * Docs:
+ * - Sandbox base URL: https://pg-sandbox.paymaya.com
+ * - Production base URL: https://pg.maya.ph
+ * - Endpoint: /checkout/v1/checkouts
+ */
 class PayMayaProvider implements PaymentProviderInterface {
-  private baseUrl: string
-  private invoiceId: string
+  private checkoutBaseUrl: string
+  private publicKey: string | undefined
 
   constructor() {
-    // Use configured PayMaya invoice URL or default
-    this.baseUrl = process.env.PAYMAYA_INVOICE_URL || 'https://payments.maya.ph/invoice'
-    // Use configured invoice ID or the one provided by user
-    this.invoiceId = process.env.PAYMAYA_INVOICE_ID || '69bf3642-c9c1-4378-810b-96aa9c2b7a69'
+    const env = (process.env.PAYMAYA_ENV || 'sandbox').toLowerCase()
+    const isProduction = env === 'production'
+
+    this.checkoutBaseUrl = isProduction
+      ? 'https://pg.maya.ph'
+      : 'https://pg-sandbox.paymaya.com'
+
+    this.publicKey = process.env.PAYMAYA_PUBLIC_KEY
+
+    if (!this.publicKey) {
+      console.warn(
+        '[PayMaya] PAYMAYA_PUBLIC_KEY is not set. Create checkout requests will fail until it is configured.'
+      )
+    }
   }
 
   async createPaymentIntent(
@@ -31,50 +49,78 @@ class PayMayaProvider implements PaymentProviderInterface {
     currency: string = 'php',
     metadata?: Record<string, any>
   ): Promise<PaymentIntent> {
-    // For PayMaya, we use invoice links
-    // Include amount and order information in URL parameters for verification
-    // Note: PayMaya invoice links may support amount parameter
-    // If your PayMaya invoice doesn't support dynamic amounts, you'll need to use PayMaya API to create invoices
-    const params = new URLSearchParams({
-      id: this.invoiceId,
-      amount: amount.toFixed(2),
-      currency: currency.toUpperCase(),
-    })
-    
-    // Include order metadata if available for tracking
-    if (metadata?.orderId) {
-      params.append('orderId', metadata.orderId)
-    }
-    if (metadata?.orderNumber) {
-      params.append('orderNumber', metadata.orderNumber)
+    if (!this.publicKey) {
+      throw new Error('PAYMAYA_PUBLIC_KEY is not configured')
     }
 
-    const paymentUrl = `${this.baseUrl}?${params.toString()}`
+    const url = `${this.checkoutBaseUrl}/checkout/v1/checkouts`
+    const requestReferenceNumber =
+      metadata?.orderNumber || metadata?.orderId || `order-${Date.now()}`
+
+    const payload: any = {
+      totalAmount: {
+        // Maya expects "value" (not "amount") for the checkout total
+        value: amount,
+        currency: currency.toUpperCase(),
+      },
+      redirectUrl: {
+        success: metadata?.successUrl,
+        failure: metadata?.failureUrl || metadata?.successUrl,
+        cancel: metadata?.cancelUrl || metadata?.failureUrl || metadata?.successUrl,
+      },
+      requestReferenceNumber,
+      metadata: {
+        orderId: metadata?.orderId,
+        orderNumber: metadata?.orderNumber,
+      },
+    }
+
+    const authHeader =
+      'Basic ' + Buffer.from(`${this.publicKey}:`).toString('base64')
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: authHeader,
+      },
+      body: JSON.stringify(payload),
+    })
+
+    if (!response.ok) {
+      const text = await response.text()
+      console.error('[PayMaya] Failed to create checkout', response.status, text)
+      throw new Error('Failed to create PayMaya checkout')
+    }
+
+    const data = (await response.json()) as {
+      checkoutId: string
+      redirectUrl: string
+    }
 
     return {
-      id: this.invoiceId,
+      id: data.checkoutId,
       amount,
       currency: currency.toUpperCase(),
-      paymentUrl,
+      paymentUrl: data.redirectUrl,
       status: 'pending',
     }
   }
 
-  async verifyWebhook(payload: string | Buffer, signature: string): Promise<any> {
-    // PayMaya webhook verification would go here
-    // For now, we'll handle this in the callback endpoint
+  async verifyWebhook(payload: string | Buffer, _signature: string): Promise<any> {
+    // Webhook verification (signature, etc.) can be implemented here
+    // For now, webhook handling is implemented directly in the API route.
     return JSON.parse(payload.toString())
   }
 
   async retrievePaymentIntent(paymentIntentId: string): Promise<PaymentIntent> {
-    // For PayMaya, we can't easily retrieve payment status via API without their SDK
-    // This would need to be implemented with PayMaya's API if available
-    const paymentUrl = `${this.baseUrl}?id=${paymentIntentId}`
+    // Retrieving a checkout's status via API can be implemented with Maya's
+    // transaction retrieval endpoints if needed. For now we return a stub.
     return {
       id: paymentIntentId,
       amount: 0,
       currency: 'PHP',
-      paymentUrl,
+      paymentUrl: '',
       status: 'pending',
     }
   }

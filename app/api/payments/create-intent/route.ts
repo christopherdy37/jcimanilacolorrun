@@ -58,6 +58,11 @@ export async function POST(request: Request) {
       })
     }
 
+    const origin = new URL(request.url).origin
+    const successUrl = `${origin}/api/payments/paymaya-callback?orderId=${order.id}&status=success`
+    const failureUrl = `${origin}/api/payments/paymaya-callback?orderId=${order.id}&status=failure`
+    const cancelUrl = `${origin}/api/payments/paymaya-callback?orderId=${order.id}&status=cancelled`
+
     const paymentProvider = getPaymentProvider()
     const paymentIntent = await paymentProvider.createPaymentIntent(
       order.totalAmount,
@@ -65,6 +70,9 @@ export async function POST(request: Request) {
       {
         orderId: order.id,
         orderNumber: order.orderNumber,
+        successUrl,
+        failureUrl,
+        cancelUrl,
       }
     )
 

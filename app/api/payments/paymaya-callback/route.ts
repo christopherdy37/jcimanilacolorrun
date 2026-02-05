@@ -8,10 +8,16 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const orderId = searchParams.get('orderId')
-    const invoiceId = searchParams.get('invoiceId')
-    const status = searchParams.get('status') // PayMaya may pass payment status
-    const paidAmount = searchParams.get('amount') // Amount paid (if PayMaya returns it)
+    const invoiceId =
+      searchParams.get('invoiceId') ||
+      searchParams.get('checkoutId') ||
+      searchParams.get('id')
+    const status = searchParams.get('status') // Our own status flag for readability
+    const paidAmount =
+      searchParams.get('amount') || searchParams.get('totalAmount') // Amount paid (if PayMaya returns it)
     const isTest = searchParams.get('test') === '1'
+    const isSandboxEnv =
+      (process.env.PAYMAYA_ENV || 'sandbox').toLowerCase() !== 'production'
 
     if (!orderId) {
       return NextResponse.redirect(new URL('/checkout/payment-error', request.url))
@@ -88,35 +94,35 @@ export async function GET(request: Request) {
       // Assign physical ticket number + code(s) (never repeats)
       let assignedTickets: Array<{ ticketNumber: string; ticketCode: string }> = []
       let ticketAssignmentPending = false
-      try {
-        const result = await assignTicketCodesToOrder({
-          orderId: order.id,
-          quantity: order.quantity,
-        })
-        assignedTickets = result.assigned
-        ticketAssignmentPending = result.insufficient
-        if (ticketAssignmentPending) {
-          console.warn(
-            '[TicketCodes] Not enough available codes to fully assign order:',
-            order.orderNumber,
-            'needed',
-            order.quantity,
-            'assigned',
-            assignedTickets.length
-          )
-        }
-      } catch (err) {
-        ticketAssignmentPending = true
-        console.error('[TicketCodes] Failed assigning ticket codes:', err)
-      }
-
-      // Test mode: if no real ticket codes are available yet, include dummy codes
-      if (isTest && assignedTickets.length === 0) {
+      // In sandbox / test, do NOT consume real ticket codes from the pool.
+      if (isSandboxEnv || isTest) {
         assignedTickets = Array.from({ length: Math.max(1, order.quantity) }).map((_, i) => ({
           ticketNumber: `TEST-${String(i + 1).padStart(4, '0')}`,
           ticketCode: `DUMMY-${order.orderNumber}-${i + 1}`,
         }))
         ticketAssignmentPending = false
+      } else {
+        try {
+          const result = await assignTicketCodesToOrder({
+            orderId: order.id,
+            quantity: order.quantity,
+          })
+          assignedTickets = result.assigned
+          ticketAssignmentPending = result.insufficient
+          if (ticketAssignmentPending) {
+            console.warn(
+              '[TicketCodes] Not enough available codes to fully assign order:',
+              order.orderNumber,
+              'needed',
+              order.quantity,
+              'assigned',
+              assignedTickets.length
+            )
+          }
+        } catch (err) {
+          ticketAssignmentPending = true
+          console.error('[TicketCodes] Failed assigning ticket codes:', err)
+        }
       }
 
       // Send receipt email to customer
@@ -190,6 +196,8 @@ export async function POST(request: Request) {
     const invoiceId = body.invoiceId || body.id
     const paymentStatus = body.status || body.paymentStatus
     const paidAmount = body.amount || body.totalAmount || body.paidAmount
+    const isSandboxEnv =
+      (process.env.PAYMAYA_ENV || 'sandbox').toLowerCase() !== 'production'
 
     if (!invoiceId || paymentStatus !== 'paid') {
       return NextResponse.json({ received: true })
@@ -242,16 +250,27 @@ export async function POST(request: Request) {
     // Assign physical ticket number + code(s) (never repeats)
     let assignedTickets: Array<{ ticketNumber: string; ticketCode: string }> = []
     let ticketAssignmentPending = false
-    try {
-      const result = await assignTicketCodesToOrder({
-        orderId: transaction.orderId,
-        quantity: transaction.order.quantity,
-      })
-      assignedTickets = result.assigned
-      ticketAssignmentPending = result.insufficient
-    } catch (err) {
-      ticketAssignmentPending = true
-      console.error('[TicketCodes] Failed assigning ticket codes (webhook):', err)
+    if (isSandboxEnv) {
+      // In sandbox, do not consume real ticket codes; generate dummy ones instead.
+      assignedTickets = Array.from({ length: Math.max(1, transaction.order.quantity) }).map(
+        (_, i) => ({
+          ticketNumber: `TEST-${String(i + 1).padStart(4, '0')}`,
+          ticketCode: `DUMMY-${transaction.order.orderNumber}-${i + 1}`,
+        })
+      )
+      ticketAssignmentPending = false
+    } else {
+      try {
+        const result = await assignTicketCodesToOrder({
+          orderId: transaction.orderId,
+          quantity: transaction.order.quantity,
+        })
+        assignedTickets = result.assigned
+        ticketAssignmentPending = result.insufficient
+      } catch (err) {
+        ticketAssignmentPending = true
+        console.error('[TicketCodes] Failed assigning ticket codes (webhook):', err)
+      }
     }
 
     // Send confirmation email
