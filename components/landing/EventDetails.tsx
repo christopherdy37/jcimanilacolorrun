@@ -37,7 +37,7 @@ export default function EventDetails() {
                 { distance: '3K Fun Run', description: 'Perfect for families and beginners' },
                 { distance: '5K Color Run', description: 'The classic color run experience' },
                 { distance: '10K Challenge', description: 'For the serious runners' },
-                { distance: '21K Marathon', description: 'The ultimate endurance challenge' },
+                { distance: '21K Half Marathon', description: 'The ultimate endurance challenge' },
               ].map((option, i) => (
                 <div
                   key={i}
