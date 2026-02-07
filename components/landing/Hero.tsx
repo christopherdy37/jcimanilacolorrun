@@ -1,83 +1,49 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import Image from 'next/image'
 
 export default function Hero() {
-  const [orderingEnabled, setOrderingEnabled] = useState(false)
-
-  useEffect(() => {
-    fetch('/api/ordering-status')
-      .then((res) => res.json())
-      .then((data) => setOrderingEnabled(data.ticketOrderingEnabled === true))
-      .catch(() => setOrderingEnabled(false))
-  }, [])
-
   return (
-    <section className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-500 via-accent-pink to-accent-blue overflow-hidden">
-      <div className="absolute inset-0 bg-black/20"></div>
-      
-      {/* Animated color particles */}
-      <div className="absolute inset-0 overflow-hidden">
-        {[...Array(20)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute rounded-full opacity-20 animate-pulse"
-            style={{
-              width: Math.random() * 100 + 50,
-              height: Math.random() * 100 + 50,
-              left: Math.random() * 100 + '%',
-              top: Math.random() * 100 + '%',
-              backgroundColor: ['#fbbf24', '#f472b6', '#60a5fa', '#34d399', '#a78bfa'][
-                Math.floor(Math.random() * 5)
-              ],
-              animationDelay: Math.random() * 2 + 's',
-              animationDuration: Math.random() * 3 + 2 + 's',
-            }}
-          />
-        ))}
+    <section className="relative h-screen w-full overflow-hidden">
+      {/* Blurred poster fills viewport so letterbox areas (sides on ultrawide) show soft poster colors, not solid bars */}
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-90"
+        style={{
+          backgroundImage: 'url(/images/hero/jci_poster.png)',
+          filter: 'blur(40px)',
+          transform: 'scale(1.08)',
+        }}
+        aria-hidden
+      />
+      {/* Sharp poster: full image visible, no crop */}
+      <div className="absolute inset-0">
+        <Image
+          src="/images/hero/jci_poster.png"
+          alt="JCI Manila Colorfest Carnival Run"
+          fill
+          className="object-contain object-center"
+          priority
+          sizes="100vw"
+        />
       </div>
 
-      <div className="relative z-10 text-center px-4 py-20 max-w-4xl mx-auto">
-        <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 drop-shadow-lg">
-          JCI Manila Color Run
-        </h1>
-        <p className="text-2xl md:text-3xl text-white/90 mb-8 font-semibold">
-          Color Run for Mental Health
-        </p>
-        
-        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 md:p-8 mb-8 border border-white/20">
-          <div className="grid md:grid-cols-2 gap-4 text-white">
-            <div>
-              <p className="text-sm opacity-80 mb-1">Date</p>
-              <p className="text-lg font-semibold">May 31, 2026</p>
-            </div>
-            <div>
-              <p className="text-sm opacity-80 mb-1">Venue</p>
-              <p className="text-lg font-semibold">SM Mall of Asia, Pasay City</p>
-            </div>
-          </div>
-        </div>
+      {/* Buy Tickets Now! — overlays the poster's "Register Now!" area */}
+      <a
+        href="#tickets"
+        className="absolute left-1/2 top-[67%] -translate-x-1/2 -translate-y-1/2 z-10 inline-block bg-gradient-to-b from-red-500 to-orange-500 text-white px-8 py-4 rounded-full font-bold text-lg sm:text-xl border-2 border-white border-dashed shadow-xl hover:from-red-400 hover:to-orange-400 hover:scale-105 transition-all whitespace-nowrap"
+        aria-label="Buy tickets now"
+      >
+        Buy Tickets Now!
+      </a>
 
-        {orderingEnabled ? (
-          <a
-            href="#tickets"
-            className="inline-block bg-red-600 text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-red-700 transition-all transform hover:scale-105 shadow-xl"
-          >
-            Buy Tickets Now
-          </a>
-        ) : (
-          <span
-            className="inline-block bg-gray-400 text-white px-8 py-4 rounded-full font-bold text-lg cursor-not-allowed shadow-xl"
-            aria-label="Ticket ordering temporarily unavailable"
-          >
-            Tickets coming soon
-          </span>
-        )}
-      </div>
-
-      <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 animate-bounce">
+      <a
+        href="#tickets"
+        className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 text-white drop-shadow-lg hover:text-white/90 transition-colors z-10"
+        aria-label="Scroll to tickets"
+      >
+        <span className="text-sm font-medium">Get tickets</span>
         <svg
-          className="w-6 h-6 text-white"
+          className="w-6 h-6 animate-bounce"
           fill="none"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -85,9 +51,9 @@ export default function Hero() {
           viewBox="0 0 24 24"
           stroke="currentColor"
         >
-          <path d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+          <path d="M19 14l-7 7m0 0l-7-7m7 7V3" />
         </svg>
-      </div>
+      </a>
     </section>
   )
 }
