@@ -84,7 +84,7 @@ class EmailService {
                 Register / Sign in, then follow the on-screen instructions on the site.
               </li>
               <li style="margin: 6px 0;">
-                Use your <strong>Ticket Number</strong> and <strong>Code</strong> from this email when the site asks for your ticket details.
+                Use the ticket code provided on this email and input on <strong>PROMO CODE</strong> field.
               </li>
             </ol>
             <p style="margin: 10px 0 0;">
