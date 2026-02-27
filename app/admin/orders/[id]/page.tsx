@@ -27,6 +27,7 @@ interface Order {
     provider: string
     status: string
   } | null
+  ticketCodes?: Array<{ ticketNumber: string; ticketCode: string }>
 }
 
 export default function OrderDetailPage() {
@@ -35,6 +36,8 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
+  const [resending, setResending] = useState(false)
+  const [resendMessage, setResendMessage] = useState<string | null>(null)
 
   const fetchOrder = async () => {
     try {
@@ -79,6 +82,30 @@ export default function OrderDetailPage() {
       alert('Failed to update order')
     } finally {
       setUpdating(false)
+    }
+  }
+
+  const resendConfirmationEmail = async () => {
+    if (!order) return
+
+    setResending(true)
+    setResendMessage(null)
+    try {
+      const res = await fetch(`/api/admin/orders/${order.id}/resend-email`, {
+        method: 'POST',
+      })
+      const data = await res.json()
+
+      if (res.ok) {
+        setResendMessage(`Email sent to ${order.customerEmail}`)
+      } else {
+        setResendMessage(data.error || data.details || 'Failed to send email')
+      }
+    } catch (error) {
+      console.error('Error resending email:', error)
+      setResendMessage('Failed to send email')
+    } finally {
+      setResending(false)
     }
   }
 
@@ -208,6 +235,22 @@ export default function OrderDetailPage() {
               <div>
                 <label className="text-sm font-medium text-gray-500">Payment Provider</label>
                 <p className="text-gray-900 capitalize">{order.paymentTransaction.provider}</p>
+              </div>
+            )}
+            {order.paymentStatus === 'COMPLETED' && (
+              <div className="pt-4 border-t border-gray-200">
+                <button
+                  onClick={resendConfirmationEmail}
+                  disabled={resending}
+                  className="w-full px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                >
+                  {resending ? 'Sending...' : 'Resend Confirmation Email'}
+                </button>
+                {resendMessage && (
+                  <p className={`mt-2 text-sm ${resendMessage.startsWith('Email sent') ? 'text-green-600' : 'text-red-600'}`}>
+                    {resendMessage}
+                  </p>
+                )}
               </div>
             )}
           </div>

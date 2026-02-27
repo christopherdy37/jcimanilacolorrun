@@ -7,7 +7,7 @@ import { assignTicketCodesToOrder } from '@/lib/ticket-codes'
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
-    const orderId = searchParams.get('orderId')
+    let orderId = searchParams.get('orderId')
     const invoiceId =
       searchParams.get('invoiceId') ||
       searchParams.get('checkoutId') ||
@@ -19,20 +19,26 @@ export async function GET(request: Request) {
     const isSandboxEnv =
       (process.env.PAYMAYA_ENV || 'sandbox').toLowerCase() !== 'production'
 
-    if (!orderId) {
-      return NextResponse.redirect(new URL('/checkout/payment-error', request.url))
+    // Find the order: by orderId (our URL param) or by checkoutId (Maya may redirect with only their params)
+    let order = orderId
+      ? await prisma.order.findUnique({
+          where: { id: orderId },
+          include: { ticketType: true, paymentTransaction: true },
+        })
+      : null
+
+    if (!order && invoiceId) {
+      const tx = await prisma.paymentTransaction.findFirst({
+        where: { providerTransactionId: invoiceId, provider: 'paymaya' },
+        include: { order: { include: { ticketType: true, paymentTransaction: true } } },
+      })
+      if (tx?.order) {
+        order = tx.order
+        orderId = order.id
+      }
     }
 
-    // Find the order and payment transaction
-    const order = await prisma.order.findUnique({
-      where: { id: orderId },
-      include: {
-        ticketType: true,
-        paymentTransaction: true,
-      },
-    })
-
-    if (!order) {
+    if (!order || !orderId) {
       return NextResponse.redirect(new URL('/checkout/payment-error', request.url))
     }
 
@@ -194,17 +200,23 @@ export async function POST(request: Request) {
     // PayMaya webhook payload structure may vary
     // Adjust based on PayMaya's actual webhook format
     const invoiceId = body.invoiceId || body.id
-    const paymentStatus = body.status || body.paymentStatus
+    const paymentStatus = (body.status || body.paymentStatus || '').toUpperCase()
     const paidAmount = body.amount || body.totalAmount || body.paidAmount
     const isSandboxEnv =
       (process.env.PAYMAYA_ENV || 'sandbox').toLowerCase() !== 'production'
 
-    if (!invoiceId || paymentStatus !== 'paid') {
+    // Maya sends PAYMENT_SUCCESS or CAPTURED for successful payments (not "paid")
+    const isPaymentSuccess =
+      paymentStatus === 'PAYMENT_SUCCESS' ||
+      paymentStatus === 'CAPTURED' ||
+      paymentStatus === 'PAID'
+
+    if (!invoiceId || !isPaymentSuccess) {
       return NextResponse.json({ received: true })
     }
 
-    // Find payment transaction by invoice ID
-    const transaction = await prisma.paymentTransaction.findFirst({
+    // Find payment transaction by invoice/checkout ID (Maya may send id or invoiceId)
+    let transaction = await prisma.paymentTransaction.findFirst({
       where: {
         providerTransactionId: invoiceId,
         provider: 'paymaya',
@@ -215,6 +227,18 @@ export async function POST(request: Request) {
         },
       },
     })
+
+    // Fallback: Maya may send payment id which differs from checkoutId; try requestReferenceNumber (orderNumber)
+    if (!transaction && body.requestReferenceNumber) {
+      const orderWithTx = await prisma.order.findFirst({
+        where: { orderNumber: body.requestReferenceNumber },
+        include: { ticketType: true, paymentTransaction: true },
+      })
+      if (orderWithTx?.paymentTransaction) {
+        const { paymentTransaction, ...order } = orderWithTx
+        transaction = { ...paymentTransaction, order } as typeof transaction
+      }
+    }
 
     if (!transaction || transaction.status === 'COMPLETED') {
       return NextResponse.json({ received: true })

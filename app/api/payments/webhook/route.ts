@@ -12,14 +12,20 @@ export async function POST(request: Request) {
     // PayMaya webhook payload structure
     // Adjust based on PayMaya's actual webhook format
     const invoiceId = body.invoiceId || body.id
-    const paymentStatus = body.status || body.paymentStatus
+    const paymentStatus = (body.status || body.paymentStatus || '').toUpperCase()
 
-    if (!invoiceId || paymentStatus !== 'paid') {
+    // Maya sends PAYMENT_SUCCESS or CAPTURED for successful payments (not "paid")
+    const isPaymentSuccess =
+      paymentStatus === 'PAYMENT_SUCCESS' ||
+      paymentStatus === 'CAPTURED' ||
+      paymentStatus === 'PAID'
+
+    if (!invoiceId || !isPaymentSuccess) {
       return NextResponse.json({ received: true })
     }
 
-    // Find payment transaction by invoice ID
-    const transaction = await prisma.paymentTransaction.findFirst({
+    // Find payment transaction by invoice/checkout ID
+    let transaction = await prisma.paymentTransaction.findFirst({
       where: {
         providerTransactionId: invoiceId,
         provider: 'paymaya',
@@ -30,6 +36,18 @@ export async function POST(request: Request) {
         },
       },
     })
+
+    // Fallback: try requestReferenceNumber (orderNumber) if id doesn't match
+    if (!transaction && body.requestReferenceNumber) {
+      const orderWithTx = await prisma.order.findFirst({
+        where: { orderNumber: body.requestReferenceNumber },
+        include: { ticketType: true, paymentTransaction: true },
+      })
+      if (orderWithTx?.paymentTransaction) {
+        const { paymentTransaction, ...order } = orderWithTx
+        transaction = { ...paymentTransaction, order } as typeof transaction
+      }
+    }
 
     if (!transaction || transaction.status === 'COMPLETED') {
       return NextResponse.json({ received: true })
