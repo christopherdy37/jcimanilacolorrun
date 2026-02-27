@@ -2,7 +2,15 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: ['maps.googleapis.com'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'maps.googleapis.com',
+        pathname: '/**',
+      },
+    ],
+    // Set DISABLE_IMAGE_OPTIMIZATION=true if you get EACCES on .next/cache in production
+    unoptimized: process.env.DISABLE_IMAGE_OPTIMIZATION === 'true',
   },
   output: 'standalone',
 }
