@@ -45,7 +45,7 @@ export async function POST(request: Request) {
       })
       if (orderWithTx?.paymentTransaction) {
         const { paymentTransaction, ...order } = orderWithTx
-        transaction = { ...paymentTransaction, order } as typeof transaction
+        transaction = { ...paymentTransaction, order } as NonNullable<typeof transaction>
       }
     }
 
