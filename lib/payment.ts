@@ -12,6 +12,7 @@ export interface PaymentProviderInterface {
   createPaymentIntent(amount: number, currency: string, metadata?: Record<string, any>): Promise<PaymentIntent>
   verifyWebhook(payload: string | Buffer, signature: string): Promise<any>
   retrievePaymentIntent(paymentIntentId: string): Promise<PaymentIntent>
+  getPaymentStatus?(paymentId: string): Promise<string | null>
 }
 
 /**
@@ -122,6 +123,42 @@ class PayMayaProvider implements PaymentProviderInterface {
       currency: 'PHP',
       paymentUrl: '',
       status: 'pending',
+    }
+  }
+
+  /**
+   * Verify payment status via Maya's GET Payment API.
+   * Requires PAYMAYA_SECRET_KEY. Use when redirect params are unreliable.
+   * Returns: 'PAYMENT_SUCCESS' | 'CAPTURED' | 'DONE' | etc., or null if verification fails.
+   */
+  async getPaymentStatus(paymentId: string): Promise<string | null> {
+    const secretKey = process.env.PAYMAYA_SECRET_KEY
+    if (!secretKey) {
+      console.warn('[PayMaya] PAYMAYA_SECRET_KEY not set – cannot verify payment via API')
+      return null
+    }
+
+    const env = (process.env.PAYMAYA_ENV || 'sandbox').toLowerCase()
+    const baseUrl =
+      env === 'production' ? 'https://pg.maya.ph' : 'https://pg-sandbox.paymaya.com'
+    const url = `${baseUrl}/payments/v1/payments/${paymentId}`
+
+    const authHeader = 'Basic ' + Buffer.from(`${secretKey}:`).toString('base64')
+
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { Authorization: authHeader },
+      })
+      if (!response.ok) {
+        console.warn('[PayMaya] getPaymentStatus failed:', response.status, await response.text())
+        return null
+      }
+      const data = (await response.json()) as { status?: string; paymentStatus?: string }
+      return (data.status || data.paymentStatus || '').toUpperCase() || null
+    } catch (err) {
+      console.error('[PayMaya] getPaymentStatus error:', err)
+      return null
     }
   }
 }

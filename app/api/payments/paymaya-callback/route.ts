@@ -2,7 +2,10 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getEmailService } from '@/lib/email'
 import { getGoogleSheetsService } from '@/lib/google-sheets'
+import { getPaymentProvider } from '@/lib/payment'
 import { assignTicketCodesToOrder } from '@/lib/ticket-codes'
+
+const SUCCESS_STATUSES = ['PAYMENT_SUCCESS', 'CAPTURED', 'PAID', 'DONE']
 
 export async function GET(request: Request) {
   try {
@@ -64,8 +67,22 @@ export async function GET(request: Request) {
     }
 
     // For PayMaya, we'll mark payment as completed when user returns from PayMaya
-    // In production, verify via PayMaya API if redirect does not include amount
+    // Optionally verify via Maya API when PAYMAYA_SECRET_KEY is set (recommended)
+    const checkoutId = invoiceId || order.paymentTransaction?.providerTransactionId
     if (status === 'success' || invoiceId) {
+      // Optional: verify payment status with Maya API before marking complete
+      if (checkoutId) {
+        const provider = getPaymentProvider()
+        const apiStatus = provider.getPaymentStatus
+          ? await provider.getPaymentStatus(checkoutId)
+          : null
+        if (apiStatus && !SUCCESS_STATUSES.includes(apiStatus)) {
+          console.warn(
+            `[PayMaya callback] API status for ${checkoutId} is ${apiStatus}, not marking complete`
+          )
+          return NextResponse.redirect(new URL('/checkout/payment-error?reason=status_unverified', request.url))
+        }
+      }
       // Update payment transaction if it exists
       if (order.paymentTransaction) {
         await prisma.paymentTransaction.update({
@@ -201,17 +218,25 @@ export async function POST(request: Request) {
     // Adjust based on PayMaya's actual webhook format
     const invoiceId = body.invoiceId || body.id
     const paymentStatus = (body.status || body.paymentStatus || '').toUpperCase()
-    const paidAmount = body.amount || body.totalAmount || body.paidAmount
+    // Maya sends amount as number/string or totalAmount.value (CHECKOUT_SUCCESS format)
+    const paidAmountRaw = body.amount || body.paidAmount || body.totalAmount
+    const paidAmount =
+      paidAmountRaw && typeof paidAmountRaw === 'object' && 'value' in paidAmountRaw
+        ? paidAmountRaw.value
+        : paidAmountRaw
     const isSandboxEnv =
       (process.env.PAYMAYA_ENV || 'sandbox').toLowerCase() !== 'production'
 
-    // Maya sends PAYMENT_SUCCESS or CAPTURED for successful payments (not "paid")
+    // Maya sends PAYMENT_SUCCESS, CAPTURED, DONE, or isPaid for successful payments
     const isPaymentSuccess =
       paymentStatus === 'PAYMENT_SUCCESS' ||
       paymentStatus === 'CAPTURED' ||
-      paymentStatus === 'PAID'
+      paymentStatus === 'PAID' ||
+      paymentStatus === 'DONE' ||
+      body.isPaid === true
 
     if (!invoiceId || !isPaymentSuccess) {
+      console.log('[PayMaya webhook] Ignored – no invoiceId or not success:', { invoiceId, paymentStatus, isPaid: body.isPaid })
       return NextResponse.json({ received: true })
     }
 

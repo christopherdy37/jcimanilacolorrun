@@ -8,6 +8,9 @@ export type AssignedTicket = {
 /**
  * Atomically assigns `quantity` unassigned TicketCode rows to an order.
  * Uses row-level locks (FOR UPDATE SKIP LOCKED) to avoid duplicates under concurrency.
+ *
+ * IMPORTANT: Ticket codes are only assigned when payment is COMPLETED.
+ * This function will throw if the order's paymentStatus is not COMPLETED.
  */
 export async function assignTicketCodesToOrder(params: {
   orderId: string
@@ -15,6 +18,20 @@ export async function assignTicketCodesToOrder(params: {
 }): Promise<{ assigned: AssignedTicket[]; insufficient: boolean }> {
   const quantity = Math.max(0, Math.floor(params.quantity || 0))
   if (quantity === 0) return { assigned: [], insufficient: false }
+
+  // Safeguard: only assign ticket codes when payment is completed
+  const order = await prisma.order.findUnique({
+    where: { id: params.orderId },
+    select: { paymentStatus: true },
+  })
+  if (!order) {
+    throw new Error(`Order not found: ${params.orderId}`)
+  }
+  if (order.paymentStatus !== 'COMPLETED') {
+    throw new Error(
+      `Cannot assign ticket codes: order payment status is ${order.paymentStatus}, not COMPLETED`
+    )
+  }
 
   return await prisma.$transaction(async (tx) => {
     // If already assigned enough codes to this order, return them

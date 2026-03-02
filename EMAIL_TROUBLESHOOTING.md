@@ -8,15 +8,27 @@ The app was checking for `paymentStatus === 'paid'` in webhooks, but **Maya send
 
 **Fix applied:** Webhook handlers now accept `PAYMENT_SUCCESS`, `CAPTURED`, and `PAID`.
 
-### Webhook setup required
+### Webhook setup required (most common fix)
 
 For reliable payment confirmation, **configure Maya webhooks** in Maya Manager:
 
 1. Go to **Settings** → **Webhooks**
 2. Add your webhook URL: `https://yoursite.com/api/payments/paymaya-callback` (POST) or `https://yoursite.com/api/payments/webhook`
 3. Subscribe to **PAYMENT_SUCCESS** (and optionally PAYMENT_FAILED, PAYMENT_EXPIRED)
+4. Click **Save and Test** to verify reachability
 
 Maya recommends webhooks over redirects: *"Do not rely on redirect URLs or synchronous API responses."*
+
+If payments succeed in Maya but orders stay PENDING, the webhook is likely **not configured** or Maya cannot reach your URL (firewall, wrong domain, etc.).
+
+### Optional: Maya API verification (redirect callback)
+
+When `PAYMAYA_SECRET_KEY` is set, the redirect callback verifies payment status with Maya's API before marking the order complete. This adds an extra layer of certainty when redirect params are unreliable.
+
+Add to `.env`:
+```
+PAYMAYA_SECRET_KEY=sk-your-secret-key
+```
 
 ### Fixing an existing stuck order
 
@@ -109,7 +121,7 @@ Payment can be confirmed via:
 - **GET callback:** User is redirected back from PayMaya with `orderId` in the URL
 - **POST webhook:** PayMaya sends a server-to-server notification
 
-If PayMaya’s redirect URL does not include our `orderId`, the callback may fail before sending the email. Webhooks are more reliable.
+If the’ user closes the browser before the redirect, or the redirect fails, the order stays PENDING. If the user closes the browser before the redirect, or the redirect fails, webhooks are more reliable (server-to-server). Webhook URL must be HTTPS and publicly accessible.
 
 **Check:** Ensure your PayMaya checkout uses:
 ```

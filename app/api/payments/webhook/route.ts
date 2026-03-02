@@ -9,18 +9,20 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
 
-    // PayMaya webhook payload structure
-    // Adjust based on PayMaya's actual webhook format
+    // PayMaya webhook payload structure (CHECKOUT_SUCCESS, PAYMENT_SUCCESS, etc.)
     const invoiceId = body.invoiceId || body.id
     const paymentStatus = (body.status || body.paymentStatus || '').toUpperCase()
 
-    // Maya sends PAYMENT_SUCCESS or CAPTURED for successful payments (not "paid")
+    // Maya sends PAYMENT_SUCCESS, CAPTURED, DONE, or isPaid for successful payments
     const isPaymentSuccess =
       paymentStatus === 'PAYMENT_SUCCESS' ||
       paymentStatus === 'CAPTURED' ||
-      paymentStatus === 'PAID'
+      paymentStatus === 'PAID' ||
+      paymentStatus === 'DONE' ||
+      body.isPaid === true
 
     if (!invoiceId || !isPaymentSuccess) {
+      console.log('[PayMaya webhook] Ignored – no invoiceId or not success:', { invoiceId, paymentStatus, isPaid: body.isPaid })
       return NextResponse.json({ received: true })
     }
 
