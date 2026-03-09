@@ -51,7 +51,22 @@ export async function POST(request: Request) {
       }
     }
 
+    // Fallback: try metadata.orderId (we pass this when creating checkout)
+    if (!transaction && body.metadata?.orderId) {
+      const orderWithTx = await prisma.order.findFirst({
+        where: { id: body.metadata.orderId },
+        include: { ticketType: true, paymentTransaction: true },
+      })
+      if (orderWithTx?.paymentTransaction) {
+        const { paymentTransaction, ...order } = orderWithTx
+        transaction = { ...paymentTransaction, order } as NonNullable<typeof transaction>
+      }
+    }
+
     if (!transaction || transaction.status === 'COMPLETED') {
+      if (!transaction) {
+        console.warn('[PayMaya webhook] No matching transaction for:', { invoiceId, requestRef: body.requestReferenceNumber, metadataOrderId: body.metadata?.orderId })
+      }
       return NextResponse.json({ received: true })
     }
 
@@ -70,7 +85,7 @@ export async function POST(request: Request) {
       }),
     ])
 
-    // Assign physical ticket number + code(s) (never repeats)
+    // Assign ticket codes FIRST (must complete before sending email)
     let assignedTickets: Array<{ ticketNumber: string; ticketCode: string }> = []
     let ticketAssignmentPending = false
     try {
@@ -97,7 +112,7 @@ export async function POST(request: Request) {
 
     // Webhook doesn't know "test mode" reliably; keep behavior real-only here.
 
-    // Send confirmation email
+    // Send confirmation email ONLY after ticket codes are assigned
     try {
       await getEmailService().sendOrderConfirmation({
         orderNumber: transaction.order.orderNumber,

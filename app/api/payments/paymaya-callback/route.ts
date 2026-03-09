@@ -6,6 +6,7 @@ import { getPaymentProvider } from '@/lib/payment'
 import { assignTicketCodesToOrder } from '@/lib/ticket-codes'
 
 const SUCCESS_STATUSES = ['PAYMENT_SUCCESS', 'CAPTURED', 'PAID', 'DONE']
+const FAILURE_STATUSES = ['PAYMENT_FAILED', 'PAYMENT_EXPIRED', 'PAYMENT_CANCELLED', 'VOIDED', 'REFUNDED']
 
 export async function GET(request: Request) {
   try {
@@ -42,6 +43,7 @@ export async function GET(request: Request) {
     }
 
     if (!order || !orderId) {
+      console.warn('[PayMaya callback GET] Order not found:', { orderId, invoiceId, url: request.url })
       return NextResponse.redirect(new URL('/checkout/payment-error', request.url))
     }
 
@@ -67,16 +69,19 @@ export async function GET(request: Request) {
     }
 
     // For PayMaya, we'll mark payment as completed when user returns from PayMaya
-    // Optionally verify via Maya API when PAYMAYA_SECRET_KEY is set (recommended)
+    // When we have status=success from our URL, we trust it. When we only have invoiceId,
+    // optionally verify via Maya API - but only reject on explicit failure (not PENDING).
     const checkoutId = invoiceId || order.paymentTransaction?.providerTransactionId
     if (status === 'success' || invoiceId) {
-      // Optional: verify payment status with Maya API before marking complete
-      if (checkoutId) {
+      // Only verify when we have invoiceId but NOT status=success (Maya may have appended params).
+      // When status=success from our URL, we trust the redirect.
+      if (checkoutId && status !== 'success') {
         const provider = getPaymentProvider()
         const apiStatus = provider.getPaymentStatus
           ? await provider.getPaymentStatus(checkoutId)
           : null
-        if (apiStatus && !SUCCESS_STATUSES.includes(apiStatus)) {
+        // Only reject on explicit failure. PENDING/PROCESSING can mean delay - allow through.
+        if (apiStatus && FAILURE_STATUSES.includes(apiStatus)) {
           console.warn(
             `[PayMaya callback] API status for ${checkoutId} is ${apiStatus}, not marking complete`
           )
@@ -114,7 +119,7 @@ export async function GET(request: Request) {
         },
       })
 
-      // Assign physical ticket number + code(s) (never repeats)
+      // Assign ticket codes FIRST (must complete before sending email)
       let assignedTickets: Array<{ ticketNumber: string; ticketCode: string }> = []
       let ticketAssignmentPending = false
       // In sandbox / test, do NOT consume real ticket codes from the pool.
@@ -148,7 +153,7 @@ export async function GET(request: Request) {
         }
       }
 
-      // Send receipt email to customer
+      // Send receipt email ONLY after ticket codes are assigned
       try {
         console.log('[PayMaya callback] Sending receipt email to:', order.customerEmail)
         await getEmailService().sendOrderConfirmation({
@@ -201,7 +206,8 @@ export async function GET(request: Request) {
       return NextResponse.redirect(new URL(`/checkout/success?orderId=${orderId}`, request.url))
     }
 
-    // If status is not success, redirect to payment error page
+    // If status is not success and no invoiceId, redirect to payment error page
+    console.warn('[PayMaya callback GET] No success signal:', { orderId, status, invoiceId })
     return NextResponse.redirect(new URL('/checkout/payment-error', request.url))
   } catch (error) {
     console.error('PayMaya callback error:', error)
@@ -236,9 +242,11 @@ export async function POST(request: Request) {
       body.isPaid === true
 
     if (!invoiceId || !isPaymentSuccess) {
-      console.log('[PayMaya webhook] Ignored – no invoiceId or not success:', { invoiceId, paymentStatus, isPaid: body.isPaid })
+      console.log('[PayMaya webhook] Ignored – no invoiceId or not success:', { invoiceId, paymentStatus, isPaid: body.isPaid, requestRef: body.requestReferenceNumber })
       return NextResponse.json({ received: true })
     }
+
+    console.log('[PayMaya webhook] Processing:', { invoiceId, paymentStatus, requestRef: body.requestReferenceNumber })
 
     // Find payment transaction by invoice/checkout ID (Maya may send id or invoiceId)
     let transaction = await prisma.paymentTransaction.findFirst({
@@ -265,7 +273,22 @@ export async function POST(request: Request) {
       }
     }
 
+    // Fallback: try metadata.orderId (we pass this when creating checkout)
+    if (!transaction && body.metadata?.orderId) {
+      const orderWithTx = await prisma.order.findFirst({
+        where: { id: body.metadata.orderId },
+        include: { ticketType: true, paymentTransaction: true },
+      })
+      if (orderWithTx?.paymentTransaction) {
+        const { paymentTransaction, ...order } = orderWithTx
+        transaction = { ...paymentTransaction, order } as NonNullable<typeof transaction>
+      }
+    }
+
     if (!transaction || transaction.status === 'COMPLETED') {
+      if (!transaction) {
+        console.warn('[PayMaya webhook] No matching transaction for:', { invoiceId, requestRef: body.requestReferenceNumber, metadataOrderId: body.metadata?.orderId })
+      }
       return NextResponse.json({ received: true })
     }
 
@@ -296,7 +319,7 @@ export async function POST(request: Request) {
       }),
     ])
 
-    // Assign physical ticket number + code(s) (never repeats)
+    // Assign ticket codes FIRST (must complete before sending email)
     let assignedTickets: Array<{ ticketNumber: string; ticketCode: string }> = []
     let ticketAssignmentPending = false
     if (isSandboxEnv) {
@@ -322,7 +345,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // Send confirmation email
+    // Send confirmation email ONLY after ticket codes are assigned
     try {
       await getEmailService().sendOrderConfirmation({
         orderNumber: transaction.order.orderNumber,

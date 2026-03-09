@@ -1,5 +1,43 @@
 # Troubleshooting: Payment & Email Issues
 
+## Why Payments Don't Complete (Root Cause Checklist)
+
+Payments can be confirmed via **redirect** (user returns from Maya) or **webhook** (Maya sends server-to-server). If neither works, orders stay PENDING.
+
+### 1. Webhook not configured (most common)
+
+Maya must know where to send payment notifications. In **Maya Manager**:
+
+- Go to **Settings** → **Webhooks**
+- Add URL: `https://yoursite.com/api/payments/paymaya-callback` (POST)
+- Subscribe to **PAYMENT_SUCCESS**
+- Click **Save and Test**
+
+Without this, you rely only on the redirect. If the user closes the browser before redirect, the order stays PENDING.
+
+### 2. Redirect URL not preserved
+
+Our success URL includes `orderId` and `status=success`. Maya should redirect to our exact URL. If Maya strips params or uses a different redirect, we may not get the success signal. Check server logs for `[PayMaya callback GET] No success signal` or `Order not found`.
+
+### 3. Webhook can't find the order
+
+We look up by: (a) `providerTransactionId` = webhook `id`, (b) `requestReferenceNumber` = order number, (c) `metadata.orderId`. If Maya sends a different `id` than our checkoutId and doesn't include `requestReferenceNumber`, we can't match. Check logs for `[PayMaya webhook] No matching transaction for`.
+
+### 4. Ticket codes pool empty
+
+If `ticket_codes` table has no unassigned codes, assignment fails. The order is still marked COMPLETED, but the email says "codes will follow." Add codes via `tickets:import` or manually.
+
+### 5. Check server logs
+
+Look for:
+
+- `[PayMaya callback GET] Order not found` – redirect reached us but we couldn't find the order
+- `[PayMaya callback GET] No success signal` – redirect lacked orderId/status=success
+- `[PayMaya webhook] Ignored` – webhook received but payload didn't indicate success
+- `[PayMaya webhook] No matching transaction` – webhook success but we couldn't match to an order
+
+---
+
 ## Transaction Stays PENDING (Customer Paid But DB Shows PENDING)
 
 ### Root cause (fixed)

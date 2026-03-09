@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { generateOrderNumber } from '@/lib/utils'
 import { getGoogleSheetsService } from '@/lib/google-sheets'
+import { applyPromoDiscount, validatePromoCode } from '@/lib/promo'
 import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
@@ -11,6 +12,7 @@ export const dynamic = 'force-dynamic'
 const createOrderSchema = z.object({
   ticketTypeId: z.string(),
   quantity: z.number().int().positive(),
+  promoCode: z.string().optional(),
   customerName: z.string().min(1),
   customerEmail: z.string().email(),
   customerPhone: z.string().min(1),
@@ -52,7 +54,24 @@ export async function POST(request: Request) {
       )
     }
 
-    const totalAmount = ticketType.price * validated.quantity
+    const baseTotal = ticketType.price * validated.quantity
+
+    // If promo code provided but invalid, reject to avoid charging wrong amount
+    if (validated.promoCode?.trim()) {
+      const validation = validatePromoCode(validated.promoCode)
+      if (!validation.valid) {
+        return NextResponse.json(
+          { error: validation.error || 'Invalid promo code' },
+          { status: 400 }
+        )
+      }
+    }
+
+    const { totalAmount } = applyPromoDiscount(
+      baseTotal,
+      validated.quantity,
+      validated.promoCode
+    )
 
     // Create order
     const order = await prisma.order.create({
