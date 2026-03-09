@@ -59,7 +59,7 @@ async function main() {
   // Refresh order
   order = await prisma.order.findUniqueOrThrow({
     where: { id: order.id },
-    include: { ticketType: true, ticketCodes: true },
+    include: { ticketType: true, ticketCodes: true, paymentTransaction: true },
   })
 
   // Step 1: Assign ticket codes FIRST (must complete before sending email)
