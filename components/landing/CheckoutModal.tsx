@@ -5,11 +5,9 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { formatCurrency } from '@/lib/utils'
-import { applyPromoDiscount, validatePromoCode } from '@/lib/promo'
 
 const checkoutSchema = z.object({
   quantity: z.number().int().positive().max(10),
-  promoCode: z.string().optional(),
   customerName: z.string().min(1, 'Name is required'),
   customerEmail: z.string().email('Invalid email address'),
   customerPhone: z.string().min(1, 'Phone number is required'),
@@ -49,9 +47,7 @@ export default function CheckoutModal({ ticket, onClose }: CheckoutModalProps) {
   })
 
   const quantity = watch('quantity')
-  const promoCode = watch('promoCode')
-  const baseTotal = ticket.price * quantity
-  const { totalAmount, discountAmount } = applyPromoDiscount(baseTotal, quantity, promoCode)
+  const totalAmount = ticket.price * quantity
 
   const onSubmit = async (data: CheckoutFormData) => {
     setProcessing(true)
@@ -149,9 +145,6 @@ export default function CheckoutModal({ ticket, onClose }: CheckoutModalProps) {
               <p className="text-sm text-gray-600">{formatCurrency(ticket.price)} per ticket</p>
             </div>
             <div className="text-right">
-              {discountAmount > 0 && (
-                <p className="text-sm text-green-600">-{formatCurrency(discountAmount)} promo</p>
-              )}
               <p className="font-bold text-lg text-gray-900">{formatCurrency(totalAmount)}</p>
             </div>
           </div>
@@ -164,25 +157,6 @@ export default function CheckoutModal({ ticket, onClose }: CheckoutModalProps) {
         )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Promo Code (optional)
-            </label>
-            <input
-              type="text"
-              placeholder="Enter promo code"
-              {...register('promoCode')}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent uppercase"
-            />
-            {promoCode && (
-              <p className={`mt-1 text-sm ${validatePromoCode(promoCode).valid ? 'text-green-600' : 'text-red-600'}`}>
-                {validatePromoCode(promoCode).valid
-                  ? '₱500 off per ticket applied (valid until March 31)'
-                  : validatePromoCode(promoCode).error}
-              </p>
-            )}
-          </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Quantity
