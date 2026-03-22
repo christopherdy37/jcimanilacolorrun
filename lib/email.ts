@@ -115,8 +115,8 @@ class EmailService {
                   .map(
                     (t) => `
                   <tr>
-                    <td style="padding: 8px; border-bottom: 1px solid #f3f4f6;">${t.ticketNumber}</td>
-                    <td style="padding: 8px; border-bottom: 1px solid #f3f4f6;"><strong>${t.ticketCode}</strong></td>
+                    <td style="padding: 8px; border-bottom: 1px solid #f3f4f6;">${(t.ticketNumber || '').toUpperCase()}</td>
+                    <td style="padding: 8px; border-bottom: 1px solid #f3f4f6;"><strong>${(t.ticketCode || '').toUpperCase()}</strong></td>
                   </tr>`
                   )
                   .join('')}
