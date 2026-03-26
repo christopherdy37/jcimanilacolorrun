@@ -38,9 +38,3 @@ next-env.d.ts
 # prisma
 /prisma/migrations
 
-# admin (local only - exclude from deployment)
-/app/admin/
-/app/api/admin/
-/components/admin/
-/middleware.ts
-
