@@ -18,11 +18,16 @@ class EmailService {
     const smtpPassword = process.env.SMTP_PASSWORD
 
     if (smtpHost && smtpUser && smtpPassword) {
+      // Longer timeouts help slow networks; production firewalls often block 587 — try SMTP_PORT=465 + TLS
+      const connectionTimeoutMs = parseInt(process.env.SMTP_CONNECTION_TIMEOUT_MS || '60000', 10)
       this.transporter = nodemailer.createTransport({
         host: smtpHost,
         port: smtpPort,
         secure: smtpPort === 465,
         requireTLS: smtpPort === 587,
+        connectionTimeout: connectionTimeoutMs,
+        greetingTimeout: connectionTimeoutMs,
+        socketTimeout: connectionTimeoutMs,
         auth: {
           user: smtpUser,
           pass: smtpPassword,
