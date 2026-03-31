@@ -66,6 +66,14 @@ async function main() {
     console.log('Promo code:', p.code)
   }
 
+  const legacy500 = await prisma.promoCode.updateMany({
+    where: { discountPerTicket: 500 },
+    data: { discountPerTicket: 300 },
+  })
+  if (legacy500.count > 0) {
+    console.log('Adjusted promo codes still at ₱500 off → ₱300 off:', legacy500.count)
+  }
+
   console.log('Seeding completed!')
 }
 

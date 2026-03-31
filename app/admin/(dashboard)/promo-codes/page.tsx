@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { formatCurrency } from '@/lib/utils'
 
 type PromoRow = {
   id: string
@@ -22,6 +21,9 @@ export default function AdminPromoCodesPage() {
   const [createDiscount, setCreateDiscount] = useState('300')
   const [createLabel, setCreateLabel] = useState('')
   const [saving, setSaving] = useState(false)
+  const [discountInputs, setDiscountInputs] = useState<Record<string, string>>({})
+  const [savingId, setSavingId] = useState<string | null>(null)
+  const [bulkWorking, setBulkWorking] = useState(false)
 
   const load = useCallback(async () => {
     setError(null)
@@ -33,6 +35,11 @@ export default function AdminPromoCodesPage() {
       }
       const data = await res.json()
       setRows(data)
+      const next: Record<string, string> = {}
+      for (const r of data as PromoRow[]) {
+        next[r.id] = String(r.discountPerTicket)
+      }
+      setDiscountInputs(next)
     } catch {
       setError('Network error')
     } finally {
@@ -77,6 +84,63 @@ export default function AdminPromoCodesPage() {
       setError('Network error')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function saveRowDiscount(row: PromoRow) {
+    const raw = discountInputs[row.id]
+    const discount = parseFloat(raw ?? '')
+    if (Number.isNaN(discount) || discount <= 0) {
+      setError('Discount must be a positive number')
+      return
+    }
+    setSavingId(row.id)
+    setError(null)
+    try {
+      const res = await fetch(`/api/admin/promo-codes/${row.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ discountPerTicket: discount }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error || 'Could not save discount')
+        return
+      }
+      await load()
+    } catch {
+      setError('Network error')
+    } finally {
+      setSavingId(null)
+    }
+  }
+
+  async function setAllDiscountsTo300() {
+    if (
+      !confirm(
+        'Update every promo code to ₱300 off per ticket (₱2,000 → ₱1,700)? This overwrites each code’s current discount.'
+      )
+    ) {
+      return
+    }
+    setBulkWorking(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/admin/promo-codes/bulk-discount', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ discountPerTicket: 300 }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error || 'Bulk update failed')
+        return
+      }
+      await load()
+    } catch {
+      setError('Network error')
+    } finally {
+      setBulkWorking(false)
     }
   }
 
@@ -172,6 +236,20 @@ export default function AdminPromoCodesPage() {
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="px-4 py-3 bg-amber-50 border-b border-amber-100 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-amber-900">
+            If checkout still shows the old ₱500 discount, your database was not migrated. Use this to fix all
+            codes at once.
+          </p>
+          <button
+            type="button"
+            disabled={bulkWorking || rows.length === 0}
+            onClick={setAllDiscountsTo300}
+            className="shrink-0 px-3 py-1.5 text-sm font-medium bg-amber-700 text-white rounded-lg hover:bg-amber-800 disabled:opacity-50"
+          >
+            {bulkWorking ? 'Updating…' : 'Set all to ₱300 off / ticket'}
+          </button>
+        </div>
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -188,8 +266,27 @@ export default function AdminPromoCodesPage() {
             {rows.map((row) => (
               <tr key={row.id}>
                 <td className="px-4 py-3 font-mono text-sm font-medium text-gray-900">{row.code}</td>
-                <td className="px-4 py-3 text-sm text-gray-700">
-                  {formatCurrency(row.discountPerTicket)}
+                <td className="px-4 py-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={discountInputs[row.id] ?? String(row.discountPerTicket)}
+                      onChange={(e) =>
+                        setDiscountInputs((m) => ({ ...m, [row.id]: e.target.value }))
+                      }
+                      className="w-24 px-2 py-1 border border-gray-300 rounded text-sm"
+                    />
+                    <button
+                      type="button"
+                      disabled={savingId === row.id}
+                      onClick={() => saveRowDiscount(row)}
+                      className="text-xs font-medium text-primary-600 hover:text-primary-800"
+                    >
+                      {savingId === row.id ? 'Saving…' : 'Save'}
+                    </button>
+                  </div>
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-600">{row.label || '—'}</td>
                 <td className="px-4 py-3">
