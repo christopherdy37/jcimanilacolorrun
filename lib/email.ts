@@ -7,19 +7,42 @@ interface EmailOptions {
   text?: string
 }
 
+/** Parse "Name <email@x.com>" or "email@x.com" */
+function parseFromHeader(from: string): { name?: string; email: string } {
+  const m = from.match(/^(.+?)\s*<([^>]+)>$/)
+  if (m) {
+    return { name: m[1].trim(), email: m[2].trim() }
+  }
+  return { email: from.trim() }
+}
+
 class EmailService {
   private transporter: nodemailer.Transporter | null = null
+  /** Uses HTTPS (443) — works when SMTP ports are blocked in Docker / cloud */
+  private brevoApiKey: string | null = null
   private configured = false
 
   constructor() {
+    const brevoKey =
+      process.env.BREVO_API_KEY?.trim() ||
+      process.env.SENDINBLUE_API_KEY?.trim() ||
+      ''
+    if (brevoKey) {
+      this.brevoApiKey = brevoKey
+      this.configured = true
+      console.log('[Email] Brevo API configured (HTTPS — use this when SMTP times out in production)')
+    }
+
     const smtpHost = process.env.SMTP_HOST
-    const smtpPort = parseInt(process.env.SMTP_PORT || '587')
+    const smtpPort = parseInt(process.env.SMTP_PORT || '587', 10)
     const smtpUser = process.env.SMTP_USER
     const smtpPassword = process.env.SMTP_PASSWORD
 
     if (smtpHost && smtpUser && smtpPassword) {
-      // Longer timeouts help slow networks; production firewalls often block 587 — try SMTP_PORT=465 + TLS
       const connectionTimeoutMs = parseInt(process.env.SMTP_CONNECTION_TIMEOUT_MS || '60000', 10)
+      // Force IPv4 when Docker/cloud SMTP hangs on IPv6 (common ETIMEDOUT on CONN)
+      const forceIpv4 = process.env.SMTP_FORCE_IPV4 === 'true'
+
       this.transporter = nodemailer.createTransport({
         host: smtpHost,
         port: smtpPort,
@@ -28,27 +51,94 @@ class EmailService {
         connectionTimeout: connectionTimeoutMs,
         greetingTimeout: connectionTimeoutMs,
         socketTimeout: connectionTimeoutMs,
+        ...(forceIpv4 ? { family: 4 as const } : {}),
         auth: {
           user: smtpUser,
           pass: smtpPassword,
         },
       })
       this.configured = true
-      console.log('[Email] SMTP configured:', smtpHost, 'port', smtpPort)
-    } else {
+      console.log(
+        '[Email] SMTP configured:',
+        smtpHost,
+        'port',
+        smtpPort,
+        forceIpv4 ? '(IPv4 only)' : ''
+      )
+    } else if (!this.brevoApiKey) {
       const missing = []
       if (!smtpHost) missing.push('SMTP_HOST')
       if (!smtpUser) missing.push('SMTP_USER')
       if (!smtpPassword) missing.push('SMTP_PASSWORD')
-      console.warn('[Email] SMTP not configured – missing:', missing.join(', '), '– receipt emails will not be sent')
+      console.warn(
+        '[Email] Not configured – add BREVO_API_KEY (recommended for production) or SMTP_* vars:',
+        missing.join(', ')
+      )
+    }
+  }
+
+  /** Prefer Brevo HTTP API when key is set (avoids blocked SMTP ports). Set EMAIL_TRANSPORT=smtp to force SMTP only. */
+  private useBrevoApi(): boolean {
+    if (!this.brevoApiKey) return false
+    const transport = (process.env.EMAIL_TRANSPORT || '').toLowerCase()
+    if (transport === 'smtp') return false
+    return true
+  }
+
+  private async sendViaBrevoApi(options: EmailOptions): Promise<void> {
+    if (!this.brevoApiKey) throw new Error('Brevo API not configured')
+
+    const fromRaw = process.env.SMTP_FROM || 'JCI Manila Color Run <noreply@jcimanilacolorrun.com>'
+    const sender = parseFromHeader(fromRaw)
+
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        accept: 'application/json',
+        'api-key': this.brevoApiKey,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        sender: {
+          email: sender.email,
+          ...(sender.name ? { name: sender.name } : {}),
+        },
+        to: [{ email: options.to }],
+        subject: options.subject,
+        htmlContent: options.html,
+        ...(options.text ? { textContent: options.text } : {}),
+      }),
+    })
+
+    if (!res.ok) {
+      const errText = await res.text()
+      throw new Error(`Brevo API ${res.status}: ${errText.slice(0, 500)}`)
     }
   }
 
   async sendEmail(options: EmailOptions): Promise<void> {
-    if (!this.configured || !this.transporter) {
-      console.warn('[Email] Skipped (SMTP not configured):', options.subject)
+    if (!this.configured) {
+      console.warn('[Email] Skipped (not configured):', options.subject)
       return
     }
+
+    if (this.useBrevoApi()) {
+      try {
+        await this.sendViaBrevoApi(options)
+        console.log('[Email] Sent via Brevo API to:', options.to, '| Subject:', options.subject)
+        return
+      } catch (err) {
+        console.error('[Email] Brevo API failed:', err)
+        if (!this.transporter) throw err
+        console.warn('[Email] Falling back to SMTP...')
+      }
+    }
+
+    if (!this.transporter) {
+      console.warn('[Email] Skipped (no SMTP transporter):', options.subject)
+      return
+    }
+
     const from = process.env.SMTP_FROM || 'JCI Manila Color Run <noreply@jcimanilacolorrun.com>'
 
     try {
@@ -59,7 +149,7 @@ class EmailService {
         html: options.html,
         text: options.text,
       })
-      console.log('[Email] Sent successfully to:', options.to, '| Subject:', options.subject)
+      console.log('[Email] Sent via SMTP to:', options.to, '| Subject:', options.subject)
     } catch (err) {
       console.error('[Email] Send failed:', err)
       throw err
@@ -204,4 +294,3 @@ export function getEmailService(): EmailService {
   }
   return emailService
 }
-
