@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server'
+import type { PromoCode } from '@prisma/client'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { generateOrderNumber } from '@/lib/utils'
 import { getGoogleSheetsService } from '@/lib/google-sheets'
-import { applyPromoDiscount, validatePromoCode } from '@/lib/promo'
+import { applyPromoDiscount, findActivePromoForCode } from '@/lib/promo'
 import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
@@ -56,22 +57,15 @@ export async function POST(request: Request) {
 
     const baseTotal = ticketType.price * validated.quantity
 
-    // If promo code provided but invalid, reject to avoid charging wrong amount
+    let appliedPromo: PromoCode | null = null
     if (validated.promoCode?.trim()) {
-      const validation = validatePromoCode(validated.promoCode)
-      if (!validation.valid) {
-        return NextResponse.json(
-          { error: validation.error || 'Invalid promo code' },
-          { status: 400 }
-        )
+      appliedPromo = await findActivePromoForCode(prisma, validated.promoCode)
+      if (!appliedPromo) {
+        return NextResponse.json({ error: 'Invalid promo code' }, { status: 400 })
       }
     }
 
-    const { totalAmount } = applyPromoDiscount(
-      baseTotal,
-      validated.quantity,
-      validated.promoCode
-    )
+    const { totalAmount } = applyPromoDiscount(baseTotal, validated.quantity, appliedPromo)
 
     // Create order
     const order = await prisma.order.create({
@@ -80,6 +74,7 @@ export async function POST(request: Request) {
         ticketTypeId: validated.ticketTypeId,
         quantity: validated.quantity,
         totalAmount,
+        promoCodeUsed: appliedPromo?.code ?? null,
         customerName: validated.customerName,
         customerEmail: validated.customerEmail,
         customerPhone: validated.customerPhone,
@@ -107,6 +102,7 @@ export async function POST(request: Request) {
         paymentStatus: order.paymentStatus,
         action: 'ORDER_CREATED',
         notes: 'New order created, awaiting payment',
+        promoCode: order.promoCodeUsed ?? '',
       })
     } catch (error) {
       console.error('Error logging order to Google Sheets:', error)

@@ -15,6 +15,7 @@ interface Order {
   emergencyPhone: string
   quantity: number
   totalAmount: number
+  promoCodeUsed: string | null
   status: string
   paymentStatus: string
   createdAt: string
@@ -170,6 +171,10 @@ export default function OrderDetailPage() {
             <div>
               <label className="text-sm font-medium text-gray-500">Total Amount</label>
               <p className="text-lg font-bold text-gray-900">{formatCurrency(order.totalAmount)}</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-500">Promo code</label>
+              <p className="text-gray-900 font-mono">{order.promoCodeUsed || '—'}</p>
             </div>
           </div>
         </div>

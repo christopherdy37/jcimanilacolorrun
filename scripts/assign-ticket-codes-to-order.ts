@@ -84,7 +84,16 @@ async function main() {
 }
 
 async function logToGoogleSheets(
-  order: { orderNumber: string; customerName: string; customerEmail: string; customerPhone: string; ticketType: { name: string }; quantity: number; totalAmount: number },
+  order: {
+    orderNumber: string
+    customerName: string
+    customerEmail: string
+    customerPhone: string
+    ticketType: { name: string }
+    quantity: number
+    totalAmount: number
+    promoCodeUsed: string | null
+  },
   tickets: Array<{ ticketNumber: string; ticketCode: string }>
 ) {
   try {
@@ -103,6 +112,7 @@ async function logToGoogleSheets(
       ticketNumbers: tickets.map((t) => t.ticketNumber).join('\n') || undefined,
       ticketCodes: tickets.map((t) => t.ticketCode).join('\n') || undefined,
       notes: 'Ticket codes assigned via script (order was manually marked paid)',
+      promoCode: order.promoCodeUsed ?? '',
     })
     console.log('Google Sheets updated.')
   } catch (err) {

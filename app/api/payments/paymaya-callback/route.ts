@@ -197,6 +197,7 @@ export async function GET(request: Request) {
           ticketNumbers: ticketNumbers || undefined,
           ticketCodes: ticketCodes || undefined,
           notes,
+          promoCode: order.promoCodeUsed ?? '',
         })
       } catch (logError) {
         console.error('Error logging payment to Google Sheets:', logError)
@@ -384,6 +385,7 @@ export async function POST(request: Request) {
         ticketNumbers: ticketNumbers || undefined,
         ticketCodes: ticketCodes || undefined,
         notes: `Payment completed via PayMaya webhook. Invoice ID: ${invoiceId}`,
+        promoCode: transaction.order.promoCodeUsed ?? '',
       })
     } catch (logError) {
       console.error('Error logging payment to Google Sheets:', logError)

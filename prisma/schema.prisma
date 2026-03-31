@@ -22,6 +22,18 @@ model AdminUser {
   @@map("admin_users")
 }
 
+model PromoCode {
+  id                String   @id @default(cuid())
+  code              String   @unique // Case-insensitive match in app; store canonical spelling
+  discountPerTicket Float    @default(500)
+  isActive          Boolean  @default(true)
+  label             String?  // Optional note for admin (e.g. influencer name)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("promo_codes")
+}
+
 model TicketType {
   id          String   @id @default(cuid())
   name        String   @unique // e.g., "Premium"
@@ -45,6 +57,9 @@ model Order {
   quantity          Int
   totalAmount       Float
   status            OrderStatus @default(PENDING)
+
+  // Promo code applied at checkout (Google Sheets / reporting)
+  promoCodeUsed     String?
   
   // Customer information
   customerName      String

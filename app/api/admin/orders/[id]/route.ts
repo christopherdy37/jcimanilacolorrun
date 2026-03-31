@@ -111,6 +111,7 @@ export async function PATCH(
           paymentStatus: order.paymentStatus,
           action: 'STATUS_UPDATED',
           notes: `Admin update: ${changes.join(', ')}`,
+          promoCode: order.promoCodeUsed ?? '',
         })
       }
     } catch (logError) {

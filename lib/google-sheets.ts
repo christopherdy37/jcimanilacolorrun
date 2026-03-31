@@ -15,6 +15,8 @@ interface OrderLogData {
   ticketNumbers?: string // newline-separated when multiple (on payment completion)
   ticketCodes?: string   // newline-separated when multiple (on payment completion)
   notes?: string
+  /** Promo code used at checkout (empty if none) */
+  promoCode?: string
 }
 
 class GoogleSheetsService {
@@ -64,7 +66,7 @@ class GoogleSheetsService {
     }
   }
 
-  private static readonly HEADERS_14 = [
+  private static readonly HEADERS_15 = [
     'Timestamp',
     'Order Number',
     'Customer Name',
@@ -79,38 +81,39 @@ class GoogleSheetsService {
     'Ticket Number(s)',
     'Ticket Code(s)',
     'Notes',
+    'Promo Code',
   ]
 
   private async initializeSheet() {
     try {
       const response = await this.sheets.spreadsheets.values.get({
         spreadsheetId: this.spreadsheetId,
-        range: `${this.sheetRangeName}!A1:N1`,
+        range: `${this.sheetRangeName}!A1:O1`,
       })
 
       const firstRow = response.data.values?.[0] ?? []
 
-      // No data: create full 14-column header
+      // No data: create full 15-column header
       if (firstRow.length === 0) {
         await this.sheets.spreadsheets.values.append({
           spreadsheetId: this.spreadsheetId,
           range: `${this.sheetRangeName}!A1`,
           valueInputOption: 'RAW',
           requestBody: {
-            values: [GoogleSheetsService.HEADERS_14],
+            values: [GoogleSheetsService.HEADERS_15],
           },
         })
         return
       }
 
-      // Existing sheet with old 12-column header: update row 1 to 14 columns so all rows align
-      if (firstRow.length === 12) {
+      // Migrate 12- or 14-column header to 15 (Promo Code column)
+      if (firstRow.length === 12 || firstRow.length === 14) {
         await this.sheets.spreadsheets.values.update({
           spreadsheetId: this.spreadsheetId,
-          range: `${this.sheetRangeName}!A1:N1`,
+          range: `${this.sheetRangeName}!A1:O1`,
           valueInputOption: 'RAW',
           requestBody: {
-            values: [GoogleSheetsService.HEADERS_14],
+            values: [GoogleSheetsService.HEADERS_15],
           },
         })
       }
@@ -119,20 +122,20 @@ class GoogleSheetsService {
     }
   }
 
-  /** Ensure header row has 14 columns so all appended rows align (fixes existing 12-column sheets). */
-  private async ensureHeader14Columns(): Promise<void> {
+  /** Ensure header row has 15 columns (Promo Code) for appended rows. */
+  private async ensureHeader15Columns(): Promise<void> {
     try {
       const res = await this.sheets.spreadsheets.values.get({
         spreadsheetId: this.spreadsheetId,
-        range: `${this.sheetRangeName}!A1:N1`,
+        range: `${this.sheetRangeName}!A1:O1`,
       })
       const firstRow = res.data.values?.[0] ?? []
-      if (firstRow.length === 12) {
+      if (firstRow.length === 12 || firstRow.length === 14) {
         await this.sheets.spreadsheets.values.update({
           spreadsheetId: this.spreadsheetId,
-          range: `${this.sheetRangeName}!A1:N1`,
+          range: `${this.sheetRangeName}!A1:O1`,
           valueInputOption: 'RAW',
-          requestBody: { values: [GoogleSheetsService.HEADERS_14] },
+          requestBody: { values: [GoogleSheetsService.HEADERS_15] },
         })
       }
     } catch {
@@ -147,7 +150,7 @@ class GoogleSheetsService {
     }
 
     try {
-      await this.ensureHeader14Columns()
+      await this.ensureHeader15Columns()
 
       const row = [
         data.timestamp,
@@ -164,6 +167,7 @@ class GoogleSheetsService {
         data.ticketNumbers ?? '',
         data.ticketCodes ?? '',
         data.notes || '',
+        data.promoCode ?? '',
       ]
 
       await this.sheets.spreadsheets.values.append({

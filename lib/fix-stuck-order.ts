@@ -97,6 +97,7 @@ export async function fixStuckPaidOrder(
       ticketNumbers: assignedTickets.map((t) => t.ticketNumber).join('\n') || undefined,
       ticketCodes: assignedTickets.map((t) => t.ticketCode).join('\n') || undefined,
       notes: `Fixed stuck paid order${noteExtra ? ` (${noteExtra})` : ''}`,
+      promoCode: order.promoCodeUsed ?? '',
     })
     googleSheetsUpdated = true
   } catch {

@@ -10,6 +10,7 @@ export default function AdminNav() {
   const navItems = [
     { href: '/admin', label: 'Dashboard' },
     { href: '/admin/orders', label: 'Orders' },
+    { href: '/admin/promo-codes', label: 'Promo codes' },
     { href: '/admin/fix-order', label: 'Fix stuck order' },
   ]
 

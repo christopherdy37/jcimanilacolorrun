@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -8,6 +8,7 @@ import { formatCurrency } from '@/lib/utils'
 
 const checkoutSchema = z.object({
   quantity: z.number().int().positive().max(10),
+  promoCode: z.string().optional(),
   customerName: z.string().min(1, 'Name is required'),
   customerEmail: z.string().email('Invalid email address'),
   customerPhone: z.string().min(1, 'Phone number is required'),
@@ -43,11 +44,68 @@ export default function CheckoutModal({ ticket, onClose }: CheckoutModalProps) {
     resolver: zodResolver(checkoutSchema),
     defaultValues: {
       quantity: 1,
+      promoCode: '',
     },
   })
 
   const quantity = watch('quantity')
-  const totalAmount = ticket.price * quantity
+  const promoCodeWatch = watch('promoCode')
+  const [pricing, setPricing] = useState({
+    totalAmount: ticket.price * quantity,
+    discountAmount: 0,
+    invalidPromo: false,
+    promoLoading: false,
+  })
+
+  useEffect(() => {
+    let cancelled = false
+    const t = setTimeout(async () => {
+      setPricing((p) => ({ ...p, promoLoading: true }))
+      try {
+        const res = await fetch('/api/promo/preview', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            code: promoCodeWatch || '',
+            unitPrice: ticket.price,
+            quantity,
+          }),
+        })
+        const json = await res.json()
+        if (cancelled) return
+        if (res.ok && 'totalAmount' in json) {
+          setPricing({
+            totalAmount: json.totalAmount,
+            discountAmount: json.discountAmount ?? 0,
+            invalidPromo: Boolean(json.invalidPromo),
+            promoLoading: false,
+          })
+        } else {
+          setPricing({
+            totalAmount: ticket.price * quantity,
+            discountAmount: 0,
+            invalidPromo: false,
+            promoLoading: false,
+          })
+        }
+      } catch {
+        if (!cancelled) {
+          setPricing({
+            totalAmount: ticket.price * quantity,
+            discountAmount: 0,
+            invalidPromo: false,
+            promoLoading: false,
+          })
+        }
+      }
+    }, 300)
+    return () => {
+      cancelled = true
+      clearTimeout(t)
+    }
+  }, [ticket.price, quantity, promoCodeWatch])
+
+  const totalAmount = pricing.totalAmount
 
   const onSubmit = async (data: CheckoutFormData) => {
     setProcessing(true)
@@ -61,6 +119,7 @@ export default function CheckoutModal({ ticket, onClose }: CheckoutModalProps) {
         body: JSON.stringify({
           ticketTypeId: ticket.id,
           ...data,
+          promoCode: data.promoCode?.trim() || undefined,
         }),
       })
 
@@ -138,15 +197,29 @@ export default function CheckoutModal({ ticket, onClose }: CheckoutModalProps) {
           </button>
         </div>
 
-        <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+        <div className="mb-6 p-4 bg-gray-50 rounded-lg space-y-2">
           <div className="flex justify-between items-center">
             <div>
               <p className="font-semibold text-gray-900">{ticket.name}</p>
               <p className="text-sm text-gray-600">{formatCurrency(ticket.price)} per ticket</p>
             </div>
-            <div className="text-right">
-              <p className="font-bold text-lg text-gray-900">{formatCurrency(totalAmount)}</p>
+            <div className="text-right text-sm text-gray-600">
+              <p>
+                {quantity} × {formatCurrency(ticket.price)}
+              </p>
             </div>
+          </div>
+          {pricing.discountAmount > 0 && (
+            <div className="flex justify-between text-sm text-green-700">
+              <span>Promo discount</span>
+              <span>−{formatCurrency(pricing.discountAmount)}</span>
+            </div>
+          )}
+          <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+            <span className="text-sm font-medium text-gray-700">Total due</span>
+            <p className="font-bold text-lg text-gray-900">
+              {pricing.promoLoading ? '…' : formatCurrency(totalAmount)}
+            </p>
           </div>
         </div>
 
@@ -170,6 +243,22 @@ export default function CheckoutModal({ ticket, onClose }: CheckoutModalProps) {
             />
             {errors.quantity && (
               <p className="mt-1 text-sm text-red-600">{errors.quantity.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Promo code (optional)
+            </label>
+            <input
+              type="text"
+              autoComplete="off"
+              placeholder="e.g. influencer name"
+              {...register('promoCode')}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            />
+            {pricing.invalidPromo && promoCodeWatch?.trim() && (
+              <p className="mt-1 text-sm text-red-600">Invalid or inactive promo code</p>
             )}
           </div>
 
@@ -253,7 +342,11 @@ export default function CheckoutModal({ ticket, onClose }: CheckoutModalProps) {
             </button>
             <button
               type="submit"
-              disabled={processing}
+              disabled={
+                processing ||
+                pricing.promoLoading ||
+                (Boolean(promoCodeWatch?.trim()) && pricing.invalidPromo)
+              }
               className="flex-1 px-4 py-3 bg-gradient-to-r from-primary-500 to-accent-pink text-white rounded-lg font-semibold hover:from-primary-600 hover:to-accent-pink/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {processing ? 'Processing...' : `Pay ${formatCurrency(totalAmount)}`}

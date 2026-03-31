@@ -28,7 +28,7 @@ async function main() {
     {
       name: 'Premium',
       description: 'Premium ticket for the JCI Manila Color Run - includes all event benefits',
-      price: 1500.0,
+      price: 2000.0,
       maxQuantity: null,
       isActive: true,
     },
@@ -41,6 +41,29 @@ async function main() {
       create: ticketType,
     })
     console.log('Created ticket type:', created.name)
+  }
+
+  const defaultPromos = [
+    { code: 'Janka', label: 'Influencer promo' },
+    { code: 'AshleyRivera', label: 'Influencer promo' },
+    { code: 'InaRoa', label: 'Influencer promo' },
+    { code: 'MichelleVito', label: 'Influencer promo' },
+    { code: 'EnzoPineda', label: 'Influencer promo' },
+    { code: 'DerekRamsay', label: 'Influencer promo' },
+  ]
+
+  for (const p of defaultPromos) {
+    await prisma.promoCode.upsert({
+      where: { code: p.code },
+      update: { isActive: true, label: p.label },
+      create: {
+        code: p.code,
+        discountPerTicket: 500,
+        isActive: true,
+        label: p.label,
+      },
+    })
+    console.log('Promo code:', p.code)
   }
 
   console.log('Seeding completed!')

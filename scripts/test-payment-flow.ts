@@ -9,10 +9,10 @@
 import { prisma } from '@/lib/prisma'
 import { getEmailService } from '@/lib/email'
 import { generateOrderNumber } from '@/lib/utils'
-import { applyPromoDiscount } from '@/lib/promo'
+import { applyPromoDiscount, findActivePromoForCode } from '@/lib/promo'
 
 const TEST_EMAIL = 'christopherdy37@gmail.com'
-const PROMO_CODE = 'JCIMNLLB26'
+const PROMO_CODE = 'Janka'
 
 async function main() {
   console.log('=== Payment Flow Test ===\n')
@@ -31,7 +31,8 @@ async function main() {
   const orderNumber = generateOrderNumber()
   const quantity = 2
   const baseTotal = ticketType.price * quantity
-  const { totalAmount, discountAmount } = applyPromoDiscount(baseTotal, quantity, PROMO_CODE)
+  const promo = await findActivePromoForCode(prisma, PROMO_CODE)
+  const { totalAmount, discountAmount } = applyPromoDiscount(baseTotal, quantity, promo)
 
   console.log('Promo code:', PROMO_CODE, discountAmount > 0 ? `(-₱${discountAmount})` : '(not applied)')
   console.log('Base:', baseTotal, '→ Total:', totalAmount)
@@ -42,6 +43,7 @@ async function main() {
       ticketTypeId: ticketType.id,
       quantity,
       totalAmount,
+      promoCodeUsed: promo?.code ?? null,
       customerName: 'Test Customer',
       customerEmail: TEST_EMAIL,
       customerPhone: '+639123456789',
