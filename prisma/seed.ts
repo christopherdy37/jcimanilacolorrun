@@ -55,10 +55,10 @@ async function main() {
   for (const p of defaultPromos) {
     await prisma.promoCode.upsert({
       where: { code: p.code },
-      update: { isActive: true, label: p.label },
+      update: { isActive: true, label: p.label, discountPerTicket: 300 },
       create: {
         code: p.code,
-        discountPerTicket: 500,
+        discountPerTicket: 300,
         isActive: true,
         label: p.label,
       },

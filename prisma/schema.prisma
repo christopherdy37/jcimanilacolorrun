@@ -25,7 +25,7 @@ model AdminUser {
 model PromoCode {
   id                String   @id @default(cuid())
   code              String   @unique // Case-insensitive match in app; store canonical spelling
-  discountPerTicket Float    @default(500)
+  discountPerTicket Float    @default(300)
   isActive          Boolean  @default(true)
   label             String?  // Optional note for admin (e.g. influencer name)
   createdAt         DateTime @default(now())

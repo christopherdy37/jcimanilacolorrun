@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     const created = await prisma.promoCode.create({
       data: {
         code: codeTrim,
-        discountPerTicket: parsed.discountPerTicket ?? 500,
+        discountPerTicket: parsed.discountPerTicket ?? 300,
         label: parsed.label ?? null,
         isActive: true,
       },

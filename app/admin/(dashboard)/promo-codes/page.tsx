@@ -19,7 +19,7 @@ export default function AdminPromoCodesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [createCode, setCreateCode] = useState('')
-  const [createDiscount, setCreateDiscount] = useState('500')
+  const [createDiscount, setCreateDiscount] = useState('300')
   const [createLabel, setCreateLabel] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -71,7 +71,7 @@ export default function AdminPromoCodesPage() {
       }
       setCreateCode('')
       setCreateLabel('')
-      setCreateDiscount('500')
+      setCreateDiscount('300')
       await load()
     } catch {
       setError('Network error')
@@ -112,8 +112,8 @@ export default function AdminPromoCodesPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Promo codes</h1>
         <p className="text-gray-600 mt-2">
-          Codes are matched case-insensitively at checkout. Default discount is ₱500 per ticket unless you
-          change it below.
+          Codes are matched case-insensitively at checkout. Default discount is ₱300 per ticket (₱2,000 →
+          ₱1,700 each) unless you change it below.
         </p>
         <p className="text-sm text-gray-500 mt-2">
           <Link href="/admin" className="text-primary-600 hover:underline">
