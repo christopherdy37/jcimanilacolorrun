@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getPaymentProvider } from '@/lib/payment'
+import { getPublicOrigin } from '@/lib/public-origin'
 
 export async function POST(request: Request) {
   try {
@@ -35,7 +36,7 @@ export async function POST(request: Request) {
     // Test mode: skip PayMaya and redirect to test page to choose success or failure
     const isTestMode = process.env.PAYMENT_TEST_MODE === 'true'
     if (isTestMode) {
-      const origin = new URL(request.url).origin
+      const origin = getPublicOrigin(request)
       const paymentUrl = `${origin}/checkout/test-payment?orderId=${order.id}`
       await prisma.paymentTransaction.create({
         data: {
@@ -58,7 +59,7 @@ export async function POST(request: Request) {
       })
     }
 
-    const origin = new URL(request.url).origin
+    const origin = getPublicOrigin(request)
     const successUrl = `${origin}/api/payments/paymaya-callback?orderId=${order.id}&status=success`
     const failureUrl = `${origin}/api/payments/paymaya-callback?orderId=${order.id}&status=failure`
     const cancelUrl = `${origin}/api/payments/paymaya-callback?orderId=${order.id}&status=cancelled`
