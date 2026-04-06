@@ -4,11 +4,13 @@ import { getEmailService } from '@/lib/email'
 import { getGoogleSheetsService } from '@/lib/google-sheets'
 import { getPaymentProvider } from '@/lib/payment'
 import { assignTicketCodesToOrder } from '@/lib/ticket-codes'
+import { getPublicOrigin } from '@/lib/public-origin'
 
 const SUCCESS_STATUSES = ['PAYMENT_SUCCESS', 'CAPTURED', 'PAID', 'DONE']
 const FAILURE_STATUSES = ['PAYMENT_FAILED', 'PAYMENT_EXPIRED', 'PAYMENT_CANCELLED', 'VOIDED', 'REFUNDED']
 
 export async function GET(request: Request) {
+  const site = getPublicOrigin(request)
   try {
     const { searchParams } = new URL(request.url)
     let orderId = searchParams.get('orderId')
@@ -44,12 +46,12 @@ export async function GET(request: Request) {
 
     if (!order || !orderId) {
       console.warn('[PayMaya callback GET] Order not found:', { orderId, invoiceId, url: request.url })
-      return NextResponse.redirect(new URL('/checkout/payment-error', request.url))
+      return NextResponse.redirect(new URL('/checkout/payment-error', site))
     }
 
     // If payment is already completed, redirect to success
     if (order.paymentStatus === 'COMPLETED') {
-      return NextResponse.redirect(new URL(`/checkout/success?orderId=${orderId}`, request.url))
+      return NextResponse.redirect(new URL(`/checkout/success?orderId=${orderId}`, site))
     }
 
     // Verify payment amount matches order amount (when PayMaya sends it back in redirect)
@@ -59,13 +61,13 @@ export async function GET(request: Request) {
       // Allow small rounding differences (0.01)
       if (Math.abs(paidAmountNum - expectedAmount) > 0.01) {
         console.error(`Payment amount mismatch for order ${orderId}: Expected ${expectedAmount}, got ${paidAmountNum}`)
-        return NextResponse.redirect(new URL('/checkout/payment-error?reason=amount_mismatch', request.url))
+        return NextResponse.redirect(new URL('/checkout/payment-error?reason=amount_mismatch', site))
       }
     } else if (process.env.REQUIRE_AMOUNT_VERIFICATION === 'true') {
       // Strict mode: do not confirm unless we received and verified the amount.
       // Maya does NOT include paid amount in the success redirect URL — do NOT use this with Maya or every payment will fail.
       console.warn(`Payment amount not returned for order ${orderId}. Redirecting to error (REQUIRE_AMOUNT_VERIFICATION=true).`)
-      return NextResponse.redirect(new URL('/checkout/payment-error?reason=amount_unverified', request.url))
+      return NextResponse.redirect(new URL('/checkout/payment-error?reason=amount_unverified', site))
     }
 
     // For PayMaya, we'll mark payment as completed when user returns from PayMaya
@@ -85,7 +87,7 @@ export async function GET(request: Request) {
           console.warn(
             `[PayMaya callback] API status for ${checkoutId} is ${apiStatus}, not marking complete`
           )
-          return NextResponse.redirect(new URL('/checkout/payment-error?reason=status_unverified', request.url))
+          return NextResponse.redirect(new URL('/checkout/payment-error?reason=status_unverified', site))
         }
       }
       // Update payment transaction if it exists
@@ -204,15 +206,15 @@ export async function GET(request: Request) {
         // Don't fail the callback if logging fails
       }
 
-      return NextResponse.redirect(new URL(`/checkout/success?orderId=${orderId}`, request.url))
+      return NextResponse.redirect(new URL(`/checkout/success?orderId=${orderId}`, site))
     }
 
     // If status is not success and no invoiceId, redirect to payment error page
     console.warn('[PayMaya callback GET] No success signal:', { orderId, status, invoiceId })
-    return NextResponse.redirect(new URL('/checkout/payment-error', request.url))
+    return NextResponse.redirect(new URL('/checkout/payment-error', site))
   } catch (error) {
     console.error('PayMaya callback error:', error)
-    return NextResponse.redirect(new URL('/checkout/payment-error', request.url))
+    return NextResponse.redirect(new URL('/checkout/payment-error', site))
   }
 }
 
