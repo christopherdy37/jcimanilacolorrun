@@ -14,6 +14,34 @@ interface TicketType {
   isActive: boolean
 }
 
+const RACE_KIT_INCLUSIONS = [
+  'Event Shirt',
+  'Race Bib',
+  "Finisher's Medal",
+  'Color Packet',
+  'Drawstring Bag',
+  'Sunglasses',
+] as const
+
+function RaceKitInclusionsList() {
+  return (
+    <div className="mb-6 space-y-2">
+      {RACE_KIT_INCLUSIONS.map((label) => (
+        <div key={label} className="flex items-center text-sm text-gray-700">
+          <svg className="w-5 h-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+            <path
+              fillRule="evenodd"
+              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+              clipRule="evenodd"
+            />
+          </svg>
+          {label}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function TicketSection() {
   const [tickets, setTickets] = useState<TicketType[]>([])
   const [loading, setLoading] = useState(true)
@@ -69,7 +97,7 @@ export default function TicketSection() {
             </h2>
             <div className="w-24 h-1 bg-gradient-to-r from-primary-500 to-accent-pink mx-auto mb-4"></div>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Premium ticket includes a race bib, color packets, event t-shirt, and finisher medal.
+              Race kit includes event shirt, race bib, finisher&apos;s medal, color packet, drawstring bag, and sunglasses.
             </p>
           </div>
 
@@ -101,32 +129,7 @@ export default function TicketSection() {
                             <p className="text-sm text-gray-500">per ticket</p>
                           </div>
 
-                          <div className="mb-6 space-y-2">
-                            <div className="flex items-center text-sm text-gray-700">
-                              <svg className="w-5 h-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                              Race Bib & Timing Chip
-                            </div>
-                            <div className="flex items-center text-sm text-gray-700">
-                              <svg className="w-5 h-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                              Color Packets
-                            </div>
-                            <div className="flex items-center text-sm text-gray-700">
-                              <svg className="w-5 h-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                              Event T-Shirt
-                            </div>
-                            <div className="flex items-center text-sm text-gray-700">
-                              <svg className="w-5 h-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                              Finisher Medal
-                            </div>
-                          </div>
+                          <RaceKitInclusionsList />
 
                           <button
                             type="button"
@@ -170,32 +173,7 @@ export default function TicketSection() {
                             <p className="text-sm text-gray-500">per ticket</p>
                           </div>
 
-                          <div className="mb-6 space-y-2">
-                            <div className="flex items-center text-sm text-gray-700">
-                              <svg className="w-5 h-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                              Race Bib & Timing Chip
-                            </div>
-                            <div className="flex items-center text-sm text-gray-700">
-                              <svg className="w-5 h-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                              Color Packets
-                            </div>
-                            <div className="flex items-center text-sm text-gray-700">
-                              <svg className="w-5 h-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                              Event T-Shirt
-                            </div>
-                            <div className="flex items-center text-sm text-gray-700">
-                              <svg className="w-5 h-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                              Finisher Medal
-                            </div>
-                          </div>
+                          <RaceKitInclusionsList />
 
                           <button
                             type="button"
