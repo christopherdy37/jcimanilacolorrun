@@ -176,8 +176,8 @@ export default function AdminPromoCodesPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Promo codes</h1>
         <p className="text-gray-600 mt-2">
-          Codes are matched case-insensitively at checkout. Default discount is ₱300 per ticket (₱2,000 →
-          ₱1,700 each) unless you change it below.
+          Checkout no longer accepts promo codes. These records are for reference only (existing orders may
+          still show a code that was applied in the past).
         </p>
         <p className="text-sm text-gray-500 mt-2">
           <Link href="/admin" className="text-primary-600 hover:underline">

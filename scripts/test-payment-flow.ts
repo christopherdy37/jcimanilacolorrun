@@ -9,10 +9,8 @@
 import { prisma } from '@/lib/prisma'
 import { getEmailService } from '@/lib/email'
 import { generateOrderNumber } from '@/lib/utils'
-import { applyPromoDiscount, findActivePromoForCode } from '@/lib/promo'
 
 const TEST_EMAIL = 'christopherdy37@gmail.com'
-const PROMO_CODE = 'Janka'
 
 async function main() {
   console.log('=== Payment Flow Test ===\n')
@@ -27,15 +25,12 @@ async function main() {
   }
   console.log('Ticket type:', ticketType.name, '₱' + ticketType.price)
 
-  // 2. Create test order (with promo code)
+  // 2. Create test order
   const orderNumber = generateOrderNumber()
   const quantity = 2
-  const baseTotal = ticketType.price * quantity
-  const promo = await findActivePromoForCode(prisma, PROMO_CODE)
-  const { totalAmount, discountAmount } = applyPromoDiscount(baseTotal, quantity, promo)
+  const totalAmount = ticketType.price * quantity
 
-  console.log('Promo code:', PROMO_CODE, discountAmount > 0 ? `(-₱${discountAmount})` : '(not applied)')
-  console.log('Base:', baseTotal, '→ Total:', totalAmount)
+  console.log('Total:', totalAmount, `(₱${ticketType.price} × ${quantity})`)
 
   const order = await prisma.order.create({
     data: {
@@ -43,7 +38,7 @@ async function main() {
       ticketTypeId: ticketType.id,
       quantity,
       totalAmount,
-      promoCodeUsed: promo?.code ?? null,
+      promoCodeUsed: null,
       customerName: 'Test Customer',
       customerEmail: TEST_EMAIL,
       customerPhone: '+639123456789',

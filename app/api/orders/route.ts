@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server'
-import type { PromoCode } from '@prisma/client'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { generateOrderNumber } from '@/lib/utils'
 import { getGoogleSheetsService } from '@/lib/google-sheets'
-import { applyPromoDiscount, findActivePromoForCode } from '@/lib/promo'
 import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
@@ -13,7 +11,6 @@ export const dynamic = 'force-dynamic'
 const createOrderSchema = z.object({
   ticketTypeId: z.string(),
   quantity: z.number().int().positive(),
-  promoCode: z.string().optional(),
   customerName: z.string().min(1),
   customerEmail: z.string().email(),
   customerPhone: z.string().min(1),
@@ -55,17 +52,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const baseTotal = ticketType.price * validated.quantity
-
-    let appliedPromo: PromoCode | null = null
-    if (validated.promoCode?.trim()) {
-      appliedPromo = await findActivePromoForCode(prisma, validated.promoCode)
-      if (!appliedPromo) {
-        return NextResponse.json({ error: 'Invalid promo code' }, { status: 400 })
-      }
-    }
-
-    const { totalAmount } = applyPromoDiscount(baseTotal, validated.quantity, appliedPromo)
+    const totalAmount = ticketType.price * validated.quantity
 
     // Create order
     const order = await prisma.order.create({
@@ -74,7 +61,7 @@ export async function POST(request: Request) {
         ticketTypeId: validated.ticketTypeId,
         quantity: validated.quantity,
         totalAmount,
-        promoCodeUsed: appliedPromo?.code ?? null,
+        promoCodeUsed: null,
         customerName: validated.customerName,
         customerEmail: validated.customerEmail,
         customerPhone: validated.customerPhone,

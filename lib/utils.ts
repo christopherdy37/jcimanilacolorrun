@@ -18,3 +18,10 @@ export function formatCurrency(amount: number): string {
   }).format(amount)
 }
 
+/** Display-only “was” price on the site when the live ticket price is lower. */
+export const TICKET_COMPARE_AT_PRICE_PHP = 2000
+
+export function ticketShowsCompareAtPrice(price: number): boolean {
+  return price < TICKET_COMPARE_AT_PRICE_PHP
+}
+

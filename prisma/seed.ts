@@ -28,7 +28,7 @@ async function main() {
     {
       name: 'Premium',
       description: 'Premium ticket for the JCI Manila Color Run - includes all event benefits',
-      price: 2000.0,
+      price: 1500.0,
       maxQuantity: null,
       isActive: true,
     },
@@ -43,35 +43,9 @@ async function main() {
     console.log('Created ticket type:', created.name)
   }
 
-  const defaultPromos = [
-    { code: 'Janka', label: 'Influencer promo' },
-    { code: 'AshleyRivera', label: 'Influencer promo' },
-    { code: 'InaRoa', label: 'Influencer promo' },
-    { code: 'MichelleVito', label: 'Influencer promo' },
-    { code: 'EnzoPineda', label: 'Influencer promo' },
-    { code: 'DerekRamsay', label: 'Influencer promo' },
-  ]
-
-  for (const p of defaultPromos) {
-    await prisma.promoCode.upsert({
-      where: { code: p.code },
-      update: { isActive: true, label: p.label, discountPerTicket: 300 },
-      create: {
-        code: p.code,
-        discountPerTicket: 300,
-        isActive: true,
-        label: p.label,
-      },
-    })
-    console.log('Promo code:', p.code)
-  }
-
-  const legacy500 = await prisma.promoCode.updateMany({
-    where: { discountPerTicket: 500 },
-    data: { discountPerTicket: 300 },
-  })
-  if (legacy500.count > 0) {
-    console.log('Adjusted promo codes still at ₱500 off → ₱300 off:', legacy500.count)
+  const promosOff = await prisma.promoCode.updateMany({ data: { isActive: false } })
+  if (promosOff.count > 0) {
+    console.log('Promo codes set inactive (checkout no longer uses promos):', promosOff.count)
   }
 
   console.log('Seeding completed!')

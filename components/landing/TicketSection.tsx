@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
-import { formatCurrency } from '@/lib/utils'
+import {
+  formatCurrency,
+  TICKET_COMPARE_AT_PRICE_PHP,
+  ticketShowsCompareAtPrice,
+} from '@/lib/utils'
 import CheckoutModal from './CheckoutModal'
 
 interface TicketType {
@@ -22,6 +26,23 @@ const RACE_KIT_INCLUSIONS = [
   'Drawstring Bag',
   'Sunglasses',
 ] as const
+
+function TicketPriceHeading({ price }: { price: number }) {
+  const showCompare = ticketShowsCompareAtPrice(price)
+  return (
+    <div className="text-center mb-6">
+      <div className="text-4xl font-bold text-primary-600 mb-2 flex flex-wrap items-baseline justify-center gap-x-3 gap-y-1">
+        {showCompare && (
+          <span className="line-through text-gray-400 text-2xl md:text-3xl font-semibold" aria-hidden>
+            {formatCurrency(TICKET_COMPARE_AT_PRICE_PHP)}
+          </span>
+        )}
+        <span>{formatCurrency(price)}</span>
+      </div>
+      <p className="text-sm text-gray-500">per ticket</p>
+    </div>
+  )
+}
 
 function RaceKitInclusionsList() {
   return (
@@ -122,12 +143,7 @@ export default function TicketSection() {
                             )}
                           </div>
 
-                          <div className="text-center mb-6">
-                            <div className="text-4xl font-bold text-primary-600 mb-2">
-                              {formatCurrency(ticket.price)}
-                            </div>
-                            <p className="text-sm text-gray-500">per ticket</p>
-                          </div>
+                          <TicketPriceHeading price={ticket.price} />
 
                           <RaceKitInclusionsList />
 
@@ -166,12 +182,7 @@ export default function TicketSection() {
                             )}
                           </div>
 
-                          <div className="text-center mb-6">
-                            <div className="text-4xl font-bold text-primary-600 mb-2">
-                              {formatCurrency(ticket.price)}
-                            </div>
-                            <p className="text-sm text-gray-500">per ticket</p>
-                          </div>
+                          <TicketPriceHeading price={ticket.price} />
 
                           <RaceKitInclusionsList />
 
