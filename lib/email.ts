@@ -1,10 +1,13 @@
-import nodemailer from 'nodemailer'
+import { readFileSync, existsSync } from 'fs'
+import path from 'path'
+import nodemailer, { type SendMailOptions } from 'nodemailer'
 
 interface EmailOptions {
   to: string
   subject: string
   html: string
   text?: string
+  attachments?: SendMailOptions['attachments']
 }
 
 /** Parse "Name <email@x.com>" or "email@x.com" */
@@ -14,6 +17,24 @@ function parseFromHeader(from: string): { name?: string; email: string } {
     return { name: m[1].trim(), email: m[2].trim() }
   }
   return { email: from.trim() }
+}
+
+const PROMO_FIELD_GUIDE_CID = 'promo-field-guide'
+
+function loadPromoFieldGuideImage(): Buffer | null {
+  const filePath = path.join(
+    process.cwd(),
+    'public',
+    'images',
+    'gallery',
+    'register.jpg'
+  )
+  if (!existsSync(filePath)) return null
+  try {
+    return readFileSync(filePath)
+  } catch {
+    return null
+  }
 }
 
 class EmailService {
@@ -85,11 +106,40 @@ class EmailService {
     return true
   }
 
+  /** Brevo HTTP API does not support CID inline images; substitute data URIs. */
+  private htmlWithInlinedCidAttachments(
+    html: string,
+    attachments: SendMailOptions['attachments']
+  ): string {
+    if (!attachments?.length) return html
+    let out = html
+    for (const att of attachments) {
+      if (!att || typeof att === 'string') continue
+      const cid = att.cid
+      if (!cid || !att.content) continue
+      const buf = Buffer.isBuffer(att.content)
+        ? att.content
+        : typeof att.content === 'string'
+          ? Buffer.from(att.content, 'base64')
+          : null
+      if (!buf?.length) continue
+      const mime = att.contentType || 'image/jpeg'
+      const b64 = buf.toString('base64')
+      out = out.replaceAll(`cid:${cid}`, `data:${mime};base64,${b64}`)
+    }
+    return out
+  }
+
   private async sendViaBrevoApi(options: EmailOptions): Promise<void> {
     if (!this.brevoApiKey) throw new Error('Brevo API not configured')
 
     const fromRaw = process.env.SMTP_FROM || 'JCI Manila Color Run <noreply@jcimanilacolorrun.com>'
     const sender = parseFromHeader(fromRaw)
+
+    const htmlContent = this.htmlWithInlinedCidAttachments(
+      options.html,
+      options.attachments
+    )
 
     const res = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
@@ -105,7 +155,7 @@ class EmailService {
         },
         to: [{ email: options.to }],
         subject: options.subject,
-        htmlContent: options.html,
+        htmlContent,
         ...(options.text ? { textContent: options.text } : {}),
       }),
     })
@@ -120,6 +170,29 @@ class EmailService {
     if (!this.configured) {
       console.warn('[Email] Skipped (not configured):', options.subject)
       return
+    }
+
+    const from = process.env.SMTP_FROM || 'JCI Manila Color Run <noreply@jcimanilacolorrun.com>'
+    const hasCidAttachments = options.attachments?.some((a) => a.cid)
+
+    // True multipart/inline CID only works over SMTP; prefer SMTP when we have embedded images.
+    if (hasCidAttachments && this.transporter) {
+      try {
+        await this.transporter.sendMail({
+          from,
+          to: options.to,
+          subject: options.subject,
+          html: options.html,
+          text: options.text,
+          attachments: options.attachments,
+        })
+        console.log('[Email] Sent via SMTP (inline images) to:', options.to, '| Subject:', options.subject)
+        return
+      } catch (err) {
+        console.error('[Email] SMTP send with attachments failed:', err)
+        if (!this.useBrevoApi()) throw err
+        console.warn('[Email] Falling back to Brevo API (data-URI images)...')
+      }
     }
 
     if (this.useBrevoApi()) {
@@ -139,8 +212,6 @@ class EmailService {
       return
     }
 
-    const from = process.env.SMTP_FROM || 'JCI Manila Color Run <noreply@jcimanilacolorrun.com>'
-
     try {
       await this.transporter.sendMail({
         from,
@@ -148,6 +219,7 @@ class EmailService {
         subject: options.subject,
         html: options.html,
         text: options.text,
+        attachments: options.attachments,
       })
       console.log('[Email] Sent via SMTP to:', options.to, '| Subject:', options.subject)
     } catch (err) {
@@ -166,6 +238,11 @@ class EmailService {
     tickets?: Array<{ ticketNumber: string; ticketCode: string }>
     ticketAssignmentPending?: boolean
   }): Promise<void> {
+    const promoGuideImage = loadPromoFieldGuideImage()
+    const promoImageSrc = promoGuideImage
+      ? `cid:${PROMO_FIELD_GUIDE_CID}`
+      : undefined
+
     const registrationInstructionsHtml =
       order.tickets && order.tickets.length
         ? `
@@ -179,9 +256,24 @@ class EmailService {
                 Register / Sign in, then follow the on-screen instructions on the site.
               </li>
               <li style="margin: 6px 0;">
-                Use the ticket code provided on this email and input on <strong>PROMO CODE</strong> field.
+                Use the ticket code provided on this email and enter it in the <strong>PROMO CODE</strong> field (see example below).
+                ${
+                  promoImageSrc
+                    ? `<div style="margin: 12px 0 0;">
+                  <img
+                    src="${promoImageSrc}"
+                    alt="Screenshot: Promo Code field on the Hyve registration form — paste your ticket code here"
+                    width="560"
+                    style="max-width: 100%; height: auto; display: block; border-radius: 8px; border: 1px solid #e5e7eb;"
+                  />
+                </div>`
+                    : ''
+                }
               </li>
             </ol>
+            <p style="margin: 10px 0 0; padding: 12px; background: #f0f9ff; border-radius: 8px; border: 1px solid #bae6fd;">
+              <strong>No additional payment:</strong> You have already paid through our checkout. When you register on Hyve (via colorfest.asia), you do <strong>not</strong> need to pay again.
+            </p>
             <p style="margin: 10px 0 0;">
               After registering, please follow any additional steps/instructions shown on
               <a href="https://colorfest.asia/" target="_blank" rel="noopener noreferrer">colorfest.asia</a>.
@@ -277,10 +369,23 @@ class EmailService {
       </html>
     `
 
+    const attachments: SendMailOptions['attachments'] =
+      promoGuideImage && order.tickets && order.tickets.length
+        ? [
+            {
+              filename: 'register.jpg',
+              content: promoGuideImage,
+              cid: PROMO_FIELD_GUIDE_CID,
+              contentType: 'image/jpeg',
+            },
+          ]
+        : undefined
+
     await this.sendEmail({
       to: order.customerEmail,
       subject: `Ticket Purchase Receipt - ${order.orderNumber} (Payment Successful)`,
       html,
+      attachments,
     })
   }
 }
