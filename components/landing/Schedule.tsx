@@ -2,13 +2,18 @@
 
 export default function Schedule() {
   const schedule = [
-    { time: '3:30 AM', activity: 'Assembly' },
-    { time: '4:30 AM', activity: 'Start for 10k' },
-    { time: '5:00 AM', activity: 'Start for 5k' },
-    { time: '6:00 AM', activity: 'Start for 3k' },
-    { time: '6:30 AM', activity: 'Start for 1k' },
-    { time: '7:00 AM', activity: 'Color Festival & Activities' },
-    { time: '9:00 AM', activity: 'Closing & Group Photos' },
+    { time: '2:30 AM', activity: 'Assembly — 21k runners' },
+    { time: '3:00 AM', activity: 'Gun start — 21k' },
+    { time: '3:30 AM', activity: 'Assembly — 10k runners' },
+    { time: '4:00 AM', activity: 'Assembly — 5k runners' },
+    { time: '4:30 AM', activity: 'Gun start — 10k' },
+    { time: '5:00 AM', activity: 'Gun start — 5k · Assembly — 3k runners' },
+    { time: '6:00 AM', activity: 'Gun start — 3k · Assembly — 1k runners' },
+    { time: '6:30 AM', activity: 'Gun start — 1k' },
+    {
+      time: '7:00 AM',
+      activity: 'Cut-off time · Color Festival & Activities',
+    },
   ]
 
   return (
