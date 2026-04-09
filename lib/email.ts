@@ -162,6 +162,11 @@ class EmailService {
 
     if (!res.ok) {
       const errText = await res.text()
+      if (res.status === 401) {
+        console.error(
+          '[Email] Brevo rejected the API key (401). Create a key at https://app.brevo.com/settings/keys and set BREVO_API_KEY (v3 API). SMTP_USER / SMTP_PASSWORD are for SMTP only — they are not the API key.'
+        )
+      }
       throw new Error(`Brevo API ${res.status}: ${errText.slice(0, 500)}`)
     }
   }
@@ -173,9 +178,27 @@ class EmailService {
     }
 
     const from = process.env.SMTP_FROM || 'JCI Manila Color Run <noreply@jcimanilacolorrun.com>'
-    const hasCidAttachments = options.attachments?.some((a) => a.cid)
+    const hasCidAttachments = options.attachments?.some((a) => a?.cid)
 
-    // True multipart/inline CID only works over SMTP; prefer SMTP when we have embedded images.
+    // Order confirmations embed a screenshot: prefer Brevo HTTPS API when configured.
+    // Outbound SMTP (port 587) often hits ETIMEDOUT from Docker/serverless; API uses 443.
+    if (hasCidAttachments && this.useBrevoApi()) {
+      try {
+        await this.sendViaBrevoApi(options)
+        console.log(
+          '[Email] Sent via Brevo API (inline images) to:',
+          options.to,
+          '| Subject:',
+          options.subject
+        )
+        return
+      } catch (err) {
+        console.error('[Email] Brevo API failed (rich email):', err)
+        if (!this.transporter) throw err
+        console.warn('[Email] Falling back to SMTP (inline images)...')
+      }
+    }
+
     if (hasCidAttachments && this.transporter) {
       try {
         await this.transporter.sendMail({
@@ -191,7 +214,15 @@ class EmailService {
       } catch (err) {
         console.error('[Email] SMTP send with attachments failed:', err)
         if (!this.useBrevoApi()) throw err
-        console.warn('[Email] Falling back to Brevo API (data-URI images)...')
+        try {
+          console.warn('[Email] Falling back to Brevo API (data-URI images)...')
+          await this.sendViaBrevoApi(options)
+          console.log('[Email] Sent via Brevo API to:', options.to, '| Subject:', options.subject)
+          return
+        } catch (brevoErr) {
+          console.error('[Email] Brevo API fallback also failed:', brevoErr)
+          throw brevoErr
+        }
       }
     }
 
