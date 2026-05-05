@@ -28,7 +28,7 @@ async function main() {
     {
       name: 'Premium',
       description: 'Premium ticket for the JCI Manila Color Run - includes all event benefits',
-      price: 1500.0,
+      price: 2000.0,
       maxQuantity: null,
       isActive: true,
     },
