@@ -18,6 +18,17 @@ const SPONSOR_IMAGES = [
   '/images/sponsors/sponsor11.jpeg',
   '/images/sponsors/sponsor12.jpeg',
   '/images/sponsors/sponsor13.jpeg',
+  '/images/sponsors/sponsor14.JPG',
+  '/images/sponsors/sponsor15.jpeg',
+  '/images/sponsors/sponsor16.jpg',
+  '/images/sponsors/sponsor17.png',
+  '/images/sponsors/sponsor18.jpeg',
+  '/images/sponsors/sponsor19.jpg',
+  '/images/sponsors/sponsor20.png',
+  '/images/sponsors/sponsor21.jpeg',
+  '/images/sponsors/sponsor22.png',
+  '/images/sponsors/sponsor24.png',
+  '/images/sponsors/sponsor25.PNG',
 ]
 
 export default function Sponsors() {
