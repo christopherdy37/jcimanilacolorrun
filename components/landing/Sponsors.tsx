@@ -25,7 +25,7 @@ const SPONSOR_IMAGES = [
   '/images/sponsors/sponsor18.jpeg',
   '/images/sponsors/sponsor19.jpg',
   '/images/sponsors/sponsor20.png',
-  '/images/sponsors/sponsor21.jpeg',
+  '/images/sponsors/sponsor21.png',
   '/images/sponsors/sponsor22.png',
   '/images/sponsors/sponsor24.png',
   '/images/sponsors/sponsor25.PNG',
