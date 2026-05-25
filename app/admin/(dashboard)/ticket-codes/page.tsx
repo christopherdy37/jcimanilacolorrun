@@ -19,25 +19,23 @@ interface ParsedRow {
   ticketCode: string
 }
 
-interface MissingOrder {
+interface MissingTicket {
+  ticketNumber: string
+  ticketCode: string
   orderNumber: string
   customerName: string
   customerEmail: string
   customerPhone: string
-  ticketType: string
   quantity: number
   totalAmount: number
-  createdAt: string
-  promoCode: string
-  ticketNumbers: string
-  ticketCodes: string
+  createdAt: string | null
 }
 
 interface SyncResult {
-  dbTotal: number
-  sheetsTotal: number
+  dbAssignedCount: number
+  sheetsTicketCount: number
   missingCount: number
-  missingOrders: MissingOrder[]
+  missingTickets: MissingTicket[]
 }
 
 function parseRows(text: string): { rows: ParsedRow[]; errors: string[] } {
@@ -258,7 +256,7 @@ export default function TicketCodesPage() {
         <div>
           <h2 className="font-semibold text-gray-900 mb-1">Google Sheets Sync Check</h2>
           <p className="text-sm text-gray-500">
-            Find orders in the database that are missing from the Orders sheet (PAYMENT_COMPLETED rows).
+            Find ticket numbers that are assigned in the database but missing from the Orders sheet.
           </p>
         </div>
 
@@ -279,8 +277,8 @@ export default function TicketCodesPage() {
         {syncResult && (
           <div className="space-y-3">
             <div className="flex gap-6 text-sm">
-              <span className="text-gray-600">DB confirmed orders: <strong>{syncResult.dbTotal}</strong></span>
-              <span className="text-gray-600">Sheets PAYMENT_COMPLETED rows: <strong>{syncResult.sheetsTotal}</strong></span>
+              <span className="text-gray-600">DB assigned tickets: <strong>{syncResult.dbAssignedCount}</strong></span>
+              <span className="text-gray-600">Sheets logged tickets: <strong>{syncResult.sheetsTicketCount}</strong></span>
               <span className={syncResult.missingCount > 0 ? 'text-red-600 font-semibold' : 'text-green-600'}>
                 Missing from Sheets: {syncResult.missingCount}
               </span>
@@ -288,30 +286,29 @@ export default function TicketCodesPage() {
 
             {syncResult.missingCount === 0 ? (
               <div className="bg-green-50 border border-green-200 rounded-md p-3 text-sm text-green-800">
-                All confirmed orders are logged in Google Sheets.
+                All assigned ticket numbers are logged in Google Sheets.
               </div>
             ) : (
               <div className="overflow-x-auto border border-gray-200 rounded-md">
                 <table className="w-full text-xs">
                   <thead className="bg-gray-50">
                     <tr>
-                      {['Order #', 'Name', 'Email', 'Phone', 'Qty', 'Amount', 'Ticket Numbers', 'Date'].map((h) => (
+                      {['Ticket Number', 'Ticket Code', 'Order #', 'Name', 'Email', 'Phone', 'Date'].map((h) => (
                         <th key={h} className="text-left px-3 py-2 font-medium text-gray-600 whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {syncResult.missingOrders.map((o) => (
-                      <tr key={o.orderNumber} className="bg-red-50">
-                        <td className="px-3 py-2 font-mono font-medium text-gray-900">{o.orderNumber}</td>
-                        <td className="px-3 py-2 text-gray-900">{o.customerName}</td>
-                        <td className="px-3 py-2 text-gray-600">{o.customerEmail}</td>
-                        <td className="px-3 py-2 text-gray-600">{o.customerPhone}</td>
-                        <td className="px-3 py-2 text-gray-900 text-center">{o.quantity}</td>
-                        <td className="px-3 py-2 text-gray-900">₱{o.totalAmount.toLocaleString()}</td>
-                        <td className="px-3 py-2 font-mono text-gray-700">{o.ticketNumbers || '—'}</td>
+                    {syncResult.missingTickets.map((t) => (
+                      <tr key={t.ticketNumber} className="bg-red-50">
+                        <td className="px-3 py-2 font-mono font-medium text-gray-900">{t.ticketNumber}</td>
+                        <td className="px-3 py-2 font-mono text-gray-700">{t.ticketCode}</td>
+                        <td className="px-3 py-2 font-mono text-gray-900">{t.orderNumber}</td>
+                        <td className="px-3 py-2 text-gray-900">{t.customerName}</td>
+                        <td className="px-3 py-2 text-gray-600">{t.customerEmail}</td>
+                        <td className="px-3 py-2 text-gray-600">{t.customerPhone}</td>
                         <td className="px-3 py-2 text-gray-500 whitespace-nowrap">
-                          {new Date(o.createdAt).toLocaleDateString('en-PH')}
+                          {t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-PH') : '—'}
                         </td>
                       </tr>
                     ))}
