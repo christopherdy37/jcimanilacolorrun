@@ -19,6 +19,27 @@ interface ParsedRow {
   ticketCode: string
 }
 
+interface MissingOrder {
+  orderNumber: string
+  customerName: string
+  customerEmail: string
+  customerPhone: string
+  ticketType: string
+  quantity: number
+  totalAmount: number
+  createdAt: string
+  promoCode: string
+  ticketNumbers: string
+  ticketCodes: string
+}
+
+interface SyncResult {
+  dbTotal: number
+  sheetsTotal: number
+  missingCount: number
+  missingOrders: MissingOrder[]
+}
+
 function parseRows(text: string): { rows: ParsedRow[]; errors: string[] } {
   const lines = text.split('\n').map((l) => l.trim()).filter(Boolean)
   const rows: ParsedRow[] = []
@@ -50,6 +71,10 @@ export default function TicketCodesPage() {
   const [importing, setImporting] = useState(false)
   const [result, setResult] = useState<ImportResult | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
+
+  const [syncLoading, setSyncLoading] = useState(false)
+  const [syncResult, setSyncResult] = useState<SyncResult | null>(null)
+  const [syncError, setSyncError] = useState<string | null>(null)
 
   useEffect(() => {
     fetch('/api/admin/ticket-codes')
@@ -97,6 +122,25 @@ export default function TicketCodesPage() {
       setImportError('Network error — please try again')
     } finally {
       setImporting(false)
+    }
+  }
+
+  async function runSyncCheck() {
+    setSyncLoading(true)
+    setSyncError(null)
+    setSyncResult(null)
+    try {
+      const res = await fetch('/api/admin/sync-check')
+      const data = await res.json()
+      if (!res.ok) {
+        setSyncError(data.error ?? 'Sync check failed')
+      } else {
+        setSyncResult(data)
+      }
+    } catch {
+      setSyncError('Network error — please try again')
+    } finally {
+      setSyncLoading(false)
     }
   }
 
@@ -207,6 +251,76 @@ export default function TicketCodesPage() {
         >
           {importing ? 'Importing…' : `Import ${parsed.length > 0 ? parsed.length + ' codes' : 'codes'}`}
         </button>
+      </div>
+
+      {/* Sheets sync check */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
+        <div>
+          <h2 className="font-semibold text-gray-900 mb-1">Google Sheets Sync Check</h2>
+          <p className="text-sm text-gray-500">
+            Find orders in the database that are missing from the Orders sheet (PAYMENT_COMPLETED rows).
+          </p>
+        </div>
+
+        <button
+          onClick={runSyncCheck}
+          disabled={syncLoading}
+          className="px-5 py-2 bg-gray-800 text-white rounded-lg font-medium text-sm hover:bg-gray-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {syncLoading ? 'Checking…' : 'Run sync check'}
+        </button>
+
+        {syncError && (
+          <div className="bg-red-50 border border-red-200 rounded-md p-3 text-sm text-red-800">
+            {syncError}
+          </div>
+        )}
+
+        {syncResult && (
+          <div className="space-y-3">
+            <div className="flex gap-6 text-sm">
+              <span className="text-gray-600">DB confirmed orders: <strong>{syncResult.dbTotal}</strong></span>
+              <span className="text-gray-600">Sheets PAYMENT_COMPLETED rows: <strong>{syncResult.sheetsTotal}</strong></span>
+              <span className={syncResult.missingCount > 0 ? 'text-red-600 font-semibold' : 'text-green-600'}>
+                Missing from Sheets: {syncResult.missingCount}
+              </span>
+            </div>
+
+            {syncResult.missingCount === 0 ? (
+              <div className="bg-green-50 border border-green-200 rounded-md p-3 text-sm text-green-800">
+                All confirmed orders are logged in Google Sheets.
+              </div>
+            ) : (
+              <div className="overflow-x-auto border border-gray-200 rounded-md">
+                <table className="w-full text-xs">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      {['Order #', 'Name', 'Email', 'Phone', 'Qty', 'Amount', 'Ticket Numbers', 'Date'].map((h) => (
+                        <th key={h} className="text-left px-3 py-2 font-medium text-gray-600 whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {syncResult.missingOrders.map((o) => (
+                      <tr key={o.orderNumber} className="bg-red-50">
+                        <td className="px-3 py-2 font-mono font-medium text-gray-900">{o.orderNumber}</td>
+                        <td className="px-3 py-2 text-gray-900">{o.customerName}</td>
+                        <td className="px-3 py-2 text-gray-600">{o.customerEmail}</td>
+                        <td className="px-3 py-2 text-gray-600">{o.customerPhone}</td>
+                        <td className="px-3 py-2 text-gray-900 text-center">{o.quantity}</td>
+                        <td className="px-3 py-2 text-gray-900">₱{o.totalAmount.toLocaleString()}</td>
+                        <td className="px-3 py-2 font-mono text-gray-700">{o.ticketNumbers || '—'}</td>
+                        <td className="px-3 py-2 text-gray-500 whitespace-nowrap">
+                          {new Date(o.createdAt).toLocaleDateString('en-PH')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
