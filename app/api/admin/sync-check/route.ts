@@ -75,12 +75,21 @@ export async function GET() {
       return NextResponse.json({ error: `Could not read Google Sheets: ${(e as Error).message}` }, { status: 500 })
     }
 
-    const missingFromSheets = dbOrders.filter(
+    // Exclude sandbox/test orders — identified by dummy ticket codes generated in non-production env
+    const realOrders = dbOrders.filter(
+      (o) =>
+        o.ticketCodes.length === 0 ||
+        !o.ticketCodes.every(
+          (t) => t.ticketNumber.startsWith('TEST-') || t.ticketCode.startsWith('DUMMY-')
+        )
+    )
+
+    const missingFromSheets = realOrders.filter(
       (o) => !sheetsOrderNumbers.has(o.orderNumber)
     )
 
     return NextResponse.json({
-      dbTotal: dbOrders.length,
+      dbTotal: realOrders.length,
       sheetsTotal: sheetsOrderNumbers.size,
       missingCount: missingFromSheets.length,
       missingOrders: missingFromSheets.map((o) => ({
