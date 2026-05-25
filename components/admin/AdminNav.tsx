@@ -11,6 +11,7 @@ export default function AdminNav() {
     { href: '/admin', label: 'Dashboard' },
     { href: '/admin/orders', label: 'Orders' },
     { href: '/admin/promo-codes', label: 'Promo codes' },
+    { href: '/admin/ticket-codes', label: 'Ticket codes' },
     { href: '/admin/fix-order', label: 'Fix stuck order' },
   ]
 
