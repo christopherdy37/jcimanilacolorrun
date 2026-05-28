@@ -1,8 +1,18 @@
 'use client'
 
 import Image from 'next/image'
+import { useEffect, useState } from 'react'
 
 export default function Hero() {
+  const [orderingEnabled, setOrderingEnabled] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/ordering-status')
+      .then((r) => r.json())
+      .then((d) => setOrderingEnabled(d.ticketOrderingEnabled === true))
+      .catch(() => setOrderingEnabled(false))
+  }, [])
+
   return (
     <section className="relative h-screen w-full overflow-hidden">
       {/* Blurred poster fills viewport so letterbox areas (sides on ultrawide) show soft poster colors, not solid bars */}
@@ -27,14 +37,23 @@ export default function Hero() {
         />
       </div>
 
-      {/* Buy Tickets Now! — overlays the poster's "Register Now!" area */}
-      <a
-        href="#tickets"
-        className="absolute left-1/2 top-[67%] -translate-x-1/2 -translate-y-1/2 z-10 inline-block bg-gradient-to-b from-red-500 to-orange-500 text-white px-8 py-4 rounded-full font-bold text-lg sm:text-xl border-2 border-white border-dashed shadow-xl hover:from-red-400 hover:to-orange-400 hover:scale-105 transition-all whitespace-nowrap"
-        aria-label="Buy tickets now"
-      >
-        Buy Tickets Now!
-      </a>
+      {/* Buy Tickets / Sold Out — overlays the poster's "Register Now!" area */}
+      {orderingEnabled ? (
+        <a
+          href="#tickets"
+          className="absolute left-1/2 top-[67%] -translate-x-1/2 -translate-y-1/2 z-10 inline-block bg-gradient-to-b from-red-500 to-orange-500 text-white px-8 py-4 rounded-full font-bold text-lg sm:text-xl border-2 border-white border-dashed shadow-xl hover:from-red-400 hover:to-orange-400 hover:scale-105 transition-all whitespace-nowrap"
+          aria-label="Buy tickets now"
+        >
+          Buy Tickets Now!
+        </a>
+      ) : (
+        <span
+          className="absolute left-1/2 top-[67%] -translate-x-1/2 -translate-y-1/2 z-10 inline-block bg-gray-700 text-white px-8 py-4 rounded-full font-bold text-lg sm:text-xl border-2 border-white border-dashed shadow-xl whitespace-nowrap cursor-default"
+          aria-label="Tickets sold out"
+        >
+          Sold Out
+        </span>
+      )}
 
       <a
         href="#tickets"

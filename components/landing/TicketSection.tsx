@@ -157,7 +157,7 @@ export default function TicketSection() {
                                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                             }`}
                           >
-                            {orderingEnabled ? 'Buy Tickets' : 'Temporarily unavailable'}
+                            {orderingEnabled ? 'Buy Tickets' : 'Sold Out'}
                           </button>
                         </div>
                         <div className="md:w-1/2 w-full flex justify-center">
@@ -196,7 +196,7 @@ export default function TicketSection() {
                                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                             }`}
                           >
-                            {orderingEnabled ? 'Buy Tickets' : 'Temporarily unavailable'}
+                            {orderingEnabled ? 'Buy Tickets' : 'Sold Out'}
                           </button>
                         </div>
                       </div>
