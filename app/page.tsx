@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import ComingSoon from '@/components/landing/ComingSoon'
 import Hero from '@/components/landing/Hero'
 import EventDetails from '@/components/landing/EventDetails'
