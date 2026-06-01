@@ -1,3 +1,4 @@
+import ComingSoon from '@/components/landing/ComingSoon'
 import Hero from '@/components/landing/Hero'
 import EventDetails from '@/components/landing/EventDetails'
 import TicketSection from '@/components/landing/TicketSection'
@@ -8,6 +9,10 @@ import FAQ from '@/components/landing/FAQ'
 import Footer from '@/components/landing/Footer'
 
 export default function Home() {
+  if (process.env.SITE_MODE === 'coming_soon') {
+    return <ComingSoon />
+  }
+
   return (
     <main className="min-h-screen">
       <Hero />
